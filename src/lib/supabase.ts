@@ -1,0 +1,66 @@
+import { createClient } from '@supabase/supabase-js';
+
+const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+if (!url || !anonKey) {
+  console.warn('Supabase env vars missing — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
+
+export const supabase = createClient(url ?? '', anonKey ?? '');
+
+export interface Memory {
+  url: string;
+  caption: string;
+}
+
+export interface Surprise {
+  id: string;
+  slug: string;
+  creator_name: string;
+  recipient_name: string;
+  nickname: string | null;
+  relationship: string | null;
+  birthday_date: string | null;
+  theme: string;
+  letter: string | null;
+  letter_photo_url: string | null;
+  memories: Memory[];
+  video_url: string | null;
+  video_file_url: string | null;
+  video_title: string | null;
+  video_dedication: string | null;
+  password_hash: string | null;
+  created_at: string;
+}
+
+export interface Wish {
+  id: string;
+  surprise_id: string;
+  author: string | null;
+  message: string;
+  created_at: string;
+}
+
+// Simple, fast, non-cryptographic hash for the optional password gate.
+// Good enough to stop casual snoopers; not real security. Returns a hex string.
+export async function hashPassword(pw: string): Promise<string> {
+  const enc = new TextEncoder().encode(`bs::${pw}`);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function verifyPassword(pw: string, hash: string): Promise<boolean> {
+  const h = await hashPassword(pw);
+  return h === hash;
+}
+
+export function generateSlug(recipientName: string): string {
+  const base = (recipientName || 'surprise')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24) || 'surprise';
+  const suffix = Math.random().toString(36).slice(2, 7);
+  return `${base}-${suffix}`;
+}
