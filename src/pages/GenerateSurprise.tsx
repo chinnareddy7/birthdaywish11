@@ -128,7 +128,13 @@ function InputField({ icon, placeholder, type = 'text', value, onChange }: { ico
   );
 }
 
-function SelectField({ icon, placeholder, value, onChange }: { icon: React.ReactNode; placeholder: string; value?: string; onChange?: (v: string) => void }) {
+function SelectField({ icon, placeholder, value, onChange, options }: { icon: React.ReactNode; placeholder: string; value?: string; onChange?: (v: string) => void; options?: { value: string; label: string }[] }) {
+  const opts = options ?? [
+    { value: 'partner', label: 'Partner' },
+    { value: 'friend', label: 'Friend' },
+    { value: 'family', label: 'Family Member' },
+    { value: 'other', label: 'Other' },
+  ];
   return (
     <div style={{ position: 'relative' }}>
       <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }}>{icon}</div>
@@ -145,10 +151,9 @@ function SelectField({ icon, placeholder, value, onChange }: { icon: React.React
         }}
       >
         <option value="" style={{ background: '#1a0f2e' }}>{placeholder}</option>
-        <option value="partner" style={{ background: '#1a0f2e' }}>Partner</option>
-        <option value="friend" style={{ background: '#1a0f2e' }}>Friend</option>
-        <option value="family" style={{ background: '#1a0f2e' }}>Family Member</option>
-        <option value="other" style={{ background: '#1a0f2e' }}>Other</option>
+        {opts.map((o) => (
+          <option key={o.value} value={o.value} style={{ background: '#1a0f2e' }}>{o.label}</option>
+        ))}
       </select>
       <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'rgba(255,255,255,0.4)' }}>
         <ChevronDown size={16} />
@@ -195,7 +200,7 @@ function Step1({ form, setForm }: { form: any; setForm: (f: any) => void }) {
         </div>
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Choose Theme <span style={{ color: '#FF4DA6' }}>*</span></label>
-          <SelectField icon={<Palette size={16} />} placeholder="Select a beautiful theme" value={form.theme} onChange={(v) => setForm({ ...form, theme: v })} />
+          <SelectField icon={<Palette size={16} />} placeholder="Select a beautiful theme" value={form.theme} onChange={(v) => setForm({ ...form, theme: v })} options={THEMES.map((t) => ({ value: t.id, label: t.label }))} />
         </div>
       </div>
 
