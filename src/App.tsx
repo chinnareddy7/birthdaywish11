@@ -7,8 +7,13 @@ type View = 'home' | 'generate';
 
 function parseRoute(): { view: 'surprise'; slug: string } | { view: 'home' | 'generate' } {
   const path = window.location.pathname;
-  const m = path.match(/^\/s\/([a-z0-9-]+)$/i);
+  const m = path.match(/^\/s\/([a-z0-9_-]+)\/?$/i);
   if (m) return { view: 'surprise', slug: m[1] };
+
+  const hash = window.location.hash;
+  const hashMatch = hash.match(/^#\/?s\/([a-z0-9_-]+)\/?$/i);
+  if (hashMatch) return { view: 'surprise', slug: hashMatch[1] };
+
   return { view: 'home' };
 }
 

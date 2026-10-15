@@ -1,16 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL) as string | undefined;
-const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) as string | undefined;
+const FALLBACK_URL = 'https://cwrspftbpivdcqidummm.supabase.co';
+const FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3cnNwZnRicGl2ZGNxaWR1bW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NDM0NjIsImV4cCI6MjEwMDQxOTQ2Mn0.foL6hCOmh-hX8upAGYSw75epL1TAS_PWRQLDPis6jGc';
 
-if (!url || !anonKey) {
-  console.warn('Supabase env vars missing — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
-}
+const url = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_URL) as string;
+const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_KEY) as string;
 
-export const supabase = createClient(
-  url || 'https://placeholder.supabase.co',
-  anonKey || 'placeholder-anon-key'
-);
+export const supabase = createClient(url, anonKey);
 
 export interface Memory {
   id?: string;
