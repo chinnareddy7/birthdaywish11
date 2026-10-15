@@ -25,15 +25,16 @@ export default function PageNav({ pages, current, onPrev, onNext, isLast, accent
       {/* Previous */}
       <button
         onClick={onPrev}
-        disabled={current === 0}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 9999,
           background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)',
-          fontWeight: 600, fontSize: 14, cursor: current === 0 ? 'not-allowed' : 'pointer',
-          opacity: current === 0 ? 0.35 : 1, transition: 'opacity 0.2s',
+          fontWeight: 600, fontSize: 14, cursor: 'pointer',
+          transition: 'opacity 0.2s, background 0.2s',
         }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
       >
-        <ChevronLeft size={16} /> Prev
+        <ChevronLeft size={16} /> Previous
       </button>
 
       {/* Dots */}

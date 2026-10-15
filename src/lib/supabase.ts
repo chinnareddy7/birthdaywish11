@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const url = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL) as string | undefined;
+const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) as string | undefined;
 
 if (!url || !anonKey) {
   console.warn('Supabase env vars missing — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
@@ -13,12 +13,13 @@ export const supabase = createClient(
 );
 
 export interface Memory {
+  id?: string;
   url: string;
   caption: string;
 }
 
 export interface Surprise {
-  id: string;
+  id: string | number;
   slug: string;
   creator_name: string;
   recipient_name: string;
@@ -26,6 +27,7 @@ export interface Surprise {
   relationship: string | null;
   birthday_date: string | null;
   theme: string;
+  verification_photo_url: string | null;
   letter: string | null;
   letter_photo_url: string | null;
   memories: Memory[];
@@ -34,6 +36,12 @@ export interface Surprise {
   video_title: string | null;
   video_dedication: string | null;
   password_hash: string | null;
+  balloon_recipient_name?: string | null;
+  balloon_main_message?: string | null;
+  balloon_personal_message?: string | null;
+  balloon_closing_message?: string | null;
+  balloon_emoji?: string | null;
+  balloon_style?: string | null;
   created_at: string;
 }
 

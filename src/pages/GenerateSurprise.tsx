@@ -1,11 +1,36 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   Home, Gift, LayoutGrid, HelpCircle, Star, Music, Moon,
   User, Heart, Calendar, Palette, ChevronDown, Lock, Sparkles,
   FileText, Image, Video, Wand2, ArrowLeft, Upload, X, Play, Check, PartyPopper,
-  Copy, Eye, Trash2, Edit3, Share2, MessageCircle, Send, Mail, Phone, QrCode, Loader2,
+  Copy, Eye, Trash2, Edit3, Share2, MessageCircle, Send, Mail, Phone, QrCode, Loader2, Plus,
 } from 'lucide-react';
-import { supabase, hashPassword, generateSlug, type Memory as SupabaseMemory } from '../lib/supabase';
+import { supabase, hashPassword, generateSlug } from '../lib/supabase';
+import { saveSurpriseLocally } from '../lib/storage';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../lib/cropImage';
+import SurpriseView from './SurpriseView';
+
+interface FormState {
+  name: string;
+  nickname: string;
+  yourName: string;
+  relationship: string;
+  birthdayDate: string;
+  theme: string;
+  verificationPhoto: string | null;
+  letter: string;
+  letterPhoto: string | null;
+  memories: Memory[];
+  videoUrl: string;
+  videoFile: string | null;
+  videoFileName: string | null;
+  videoTitle: string;
+  videoDedication: string;
+  usePassword: boolean;
+  password: string;
+  balloonMessages: { id: string; message: string; emoji: string; }[];
+}
 
 interface Props {
   onBack: () => void;
@@ -20,9 +45,11 @@ const SIDEBAR_ITEMS = [
 
 const STEPS = [
   { num: 1, label: 'Personal Information' },
-  { num: 2, label: 'Birthday Letter' },
-  { num: 3, label: 'Beautiful Memories' },
-  { num: 4, label: 'Special Video' },
+  { num: 2, label: 'Birthday Verification' },
+  { num: 3, label: 'Birthday Letter' },
+  { num: 4, label: 'Beautiful Memories' },
+  { num: 5, label: 'Balloon Pop Message' },
+  { num: 6, label: 'Special Video' },
 ];
 
 const THEMES = [
@@ -66,9 +93,6 @@ interface Memory {
   url: string;
   caption: string;
 }
-
-// Ensure local Memory is structurally compatible with the Supabase Memory.
-type _Compat = SupabaseMemory extends Memory ? true : false;
 
 function ThemeCard({ theme, selected, onClick }: { theme: typeof THEMES[0]; selected: boolean; onClick: () => void }) {
   return (
@@ -163,7 +187,7 @@ function SelectField({ icon, placeholder, value, onChange, options }: { icon: Re
 }
 
 // ── Step 1: Personal Information ─────────────────────────────────────────────
-function Step1({ form, setForm }: { form: any; setForm: (f: any) => void }) {
+function Step1({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 24 }}>
@@ -171,7 +195,7 @@ function Step1({ form, setForm }: { form: any; setForm: (f: any) => void }) {
           <User size={22} style={{ color: '#A78BFA' }} />
         </div>
         <div>
-          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 1 of 4</div>
+          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 1 of 6</div>
           <h2 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Personal Information</h2>
           <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Tell us about the birthday person to make it extra special. 💌</p>
         </div>
@@ -217,7 +241,7 @@ function Step1({ form, setForm }: { form: any; setForm: (f: any) => void }) {
 }
 
 // ── Step 2: Birthday Letter ───────────────────────────────────────────────────
-function Step2({ form, setForm }: { form: any; setForm: (f: any) => void }) {
+function Step2({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -227,7 +251,7 @@ function Step2({ form, setForm }: { form: any; setForm: (f: any) => void }) {
           <FileText size={22} style={{ color: '#A78BFA' }} />
         </div>
         <div>
-          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 2 of 4</div>
+          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 3 of 6</div>
           <h2 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Birthday Letter</h2>
           <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Write a heartfelt letter from your heart. 💌</p>
         </div>
@@ -281,7 +305,11 @@ function Step2({ form, setForm }: { form: any; setForm: (f: any) => void }) {
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Add a Photo to the Letter (Optional)</label>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) setForm({ ...form, letterPhoto: URL.createObjectURL(f) });
+          if (f) {
+            const reader = new FileReader();
+            reader.onload = () => setForm({ ...form, letterPhoto: reader.result as string });
+            reader.readAsDataURL(f);
+          }
         }} />
         {form.letterPhoto ? (
           <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(139,92,246,0.3)' }}>
@@ -302,18 +330,64 @@ function Step2({ form, setForm }: { form: any; setForm: (f: any) => void }) {
 }
 
 // ── Step 3: Beautiful Memories ─────────────────────────────────────────────────
-function Step3({ form, setForm }: { form: any; setForm: (f: any) => void }) {
+function Step3({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   const memories: Memory[] = form.memories ?? [];
 
-  const addFiles = (files: FileList | null) => {
+  const addFiles = async (files: FileList | null) => {
     if (!files) return;
-    const newMems: Memory[] = Array.from(files).slice(0, 8 - memories.length).map((f) => ({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      url: URL.createObjectURL(f),
-      caption: '',
-    }));
-    setForm({ ...form, memories: [...memories, ...newMems] });
+    const fileArray = Array.from(files);
+    setUploading(true);
+
+    const newMemories: Memory[] = [];
+
+    for (const file of fileArray) {
+      try {
+        const fileExt = file.name.split('.').pop() || 'jpg';
+        const fileName = `memory-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
+        let photoUrl = '';
+
+        const { error: uploadError } = await supabase.storage
+          .from('verification-photos')
+          .upload(fileName, file, {
+            upsert: false,
+            contentType: file.type,
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('verification-photos')
+          .getPublicUrl(fileName);
+
+        photoUrl = publicUrlData.publicUrl;
+
+        newMemories.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          url: photoUrl,
+          caption: '',
+        });
+      } catch (err) {
+        console.warn('Memory upload failed, falling back to base64', err);
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newMemories.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          url: base64,
+          caption: '',
+        });
+      }
+    }
+
+    setForm({ ...form, memories: [...memories, ...newMemories] });
+    setUploading(false);
   };
 
   const removeMemory = (id: string) => {
@@ -325,63 +399,492 @@ function Step3({ form, setForm }: { form: any; setForm: (f: any) => void }) {
   };
 
   return (
-    <>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 24 }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(123,63,228,0.3), rgba(255,31,140,0.3))', border: '2px solid rgba(139,92,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Image size={22} style={{ color: '#A78BFA' }} />
-        </div>
-        <div>
-          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 3 of 4</div>
-          <h2 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Beautiful Memories</h2>
-          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Upload up to 8 of your favorite photos together. 📸</p>
-        </div>
+    <div style={{
+      background: 'linear-gradient(135deg, #fffafb, #ffecee)',
+      borderRadius: 24,
+      padding: '40px 24px',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 10px 40px rgba(255, 77, 166, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.5)',
+      minHeight: 480,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center'
+    }}>
+      <style>{`
+        @keyframes floatHeartStep3 {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-15px) scale(1.1); }
+        }
+        @keyframes fadeInUpStep3 {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .mem-polaroid {
+          animation: fadeInUpStep3 0.4s ease-out forwards;
+        }
+        .mem-polaroid:hover .mem-remove-btn { opacity: 1 !important; transform: scale(1) !important; }
+        .mem-remove-btn { opacity: 0; transform: scale(0.8); transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        .beautiful-mem-input::placeholder { color: rgba(255, 77, 133, 0.4); }
+      `}</style>
+      
+      {/* Floating Hearts background */}
+      <div style={{ position: 'absolute', top: '10%', left: '5%', opacity: 0.4, animation: 'floatHeartStep3 6s ease-in-out infinite' }}><Heart size={24} color="#ffb3c6" fill="#ffb3c6" /></div>
+      <div style={{ position: 'absolute', top: '20%', right: '10%', opacity: 0.3, animation: 'floatHeartStep3 5s ease-in-out infinite 1s' }}><Heart size={16} color="#ff8fab" fill="#ff8fab" /></div>
+      <div style={{ position: 'absolute', bottom: '15%', left: '15%', opacity: 0.3, animation: 'floatHeartStep3 7s ease-in-out infinite 2s' }}><Heart size={20} color="#ffb3c6" fill="#ffb3c6" /></div>
+      <div style={{ position: 'absolute', bottom: '25%', right: '5%', opacity: 0.4, animation: 'floatHeartStep3 6s ease-in-out infinite 1.5s' }}><Heart size={28} color="#ff8fab" fill="#ff8fab" /></div>
+      
+      {/* Subtle glowing particles */}
+      <div style={{ position: 'absolute', top: '40%', left: '20%', width: 6, height: 6, borderRadius: '50%', background: '#ff99ac', boxShadow: '0 0 10px #ff99ac', opacity: 0.6 }} />
+      <div style={{ position: 'absolute', top: '60%', right: '25%', width: 4, height: 4, borderRadius: '50%', background: '#ff99ac', boxShadow: '0 0 8px #ff99ac', opacity: 0.5 }} />
+
+      <div style={{ textAlign: 'center', position: 'relative', zIndex: 10, marginBottom: 32 }}>
+        <h2 style={{ 
+          margin: '0 0 8px', 
+          fontSize: '2.4rem', 
+          fontFamily: "'Dancing Script', cursive", 
+          color: '#ff4d85',
+          fontWeight: 700,
+          textShadow: '0 2px 10px rgba(255, 77, 133, 0.2)'
+        }}>
+          Beautiful Memories
+        </h2>
+        <p style={{ 
+          margin: 0, 
+          fontSize: '1.2rem', 
+          fontFamily: "'Dancing Script', cursive", 
+          color: '#ff75a0',
+          fontWeight: 600
+        }}>
+          A little collection of moments worth keeping ❤️
+        </p>
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => addFiles(e.target.files)} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-        {memories.map((m) => (
-          <div key={m.id} style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(139,92,246,0.25)', background: 'rgba(255,255,255,0.03)' }}>
-            <img src={m.url} alt="Memory" style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} />
-            <button onClick={() => removeMemory(m.id)} style={{ position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={14} />
-            </button>
-            <input
-              value={m.caption}
-              onChange={(e) => setCaption(m.id, e.target.value)}
-              placeholder="Add caption..."
-              style={{ width: '100%', padding: '8px 10px', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(139,92,246,0.15)', color: '#fff', fontSize: 11, outline: 'none', fontFamily: "'Inter', sans-serif" }}
-            />
-          </div>
-        ))}
-        {memories.length < 8 && (
+      {memories.length === 0 ? (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          flex: 1,
+          width: '100%',
+          animation: 'fadeInUpStep3 0.5s ease-out',
+          zIndex: 10
+        }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>✨</div>
+          <h3 style={{ margin: '0 0 8px', color: '#ff4d85', fontSize: '1.3rem', fontWeight: 700 }}>Your memories belong here</h3>
+          <p style={{ margin: '0 0 28px', color: '#ff8fab', textAlign: 'center', fontSize: '1rem', maxWidth: 260, lineHeight: 1.5, fontWeight: 500 }}>
+            Add the moments that make this birthday special ❤️
+          </p>
           <button
             onClick={() => fileRef.current?.click()}
+            disabled={uploading}
             style={{
-              height: 134, borderRadius: 12, cursor: 'pointer',
-              background: 'rgba(255,255,255,0.03)',
-              border: '2px dashed rgba(139,92,246,0.3)',
-              color: 'rgba(255,255,255,0.5)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12,
+              padding: '16px 36px',
+              borderRadius: 50,
+              background: 'linear-gradient(135deg, #ff75a0, #ff4d85)',
+              border: 'none',
+              color: '#fff',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              cursor: uploading ? 'wait' : 'pointer',
+              opacity: uploading ? 0.7 : 1,
+              boxShadow: '0 8px 24px rgba(255, 77, 133, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(255, 77, 133, 0.45)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(255, 77, 133, 0.35)'; }}
           >
-            <Upload size={22} style={{ color: '#A78BFA' }} />
-            Add Photo
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{memories.length}/8</span>
+            {uploading ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />} {uploading ? 'Uploading...' : 'Add Photos'}
+          </button>
+        </div>
+      ) : (
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+             <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              style={{
+                padding: '12px 28px',
+                borderRadius: 50,
+                background: '#fff',
+                border: '2px dashed #ff99ac',
+                color: '#ff4d85',
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                cursor: uploading ? 'wait' : 'pointer',
+                opacity: uploading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(255, 77, 133, 0.08)'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#fff0f3'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />} {uploading ? 'Uploading...' : 'Add More Photos'}
+            </button>
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            justifyContent: 'center', 
+            gap: '24px 16px', 
+            padding: '10px 0 20px',
+            width: '100%' 
+          }}>
+            {memories.map((m, i) => {
+              const rotations = [-5, 4, -3, 6, -4, 3, -6, 5];
+              const rot = rotations[i % rotations.length];
+              return (
+                <div key={m.id} className="mem-polaroid" style={{
+                  position: 'relative',
+                  width: 140,
+                  background: '#fff',
+                  padding: '8px 8px 12px 8px',
+                  borderRadius: 4,
+                  boxShadow: '0 6px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
+                  transform: `rotate(${rot}deg)`,
+                  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = `scale(1.1) rotate(0deg) translateY(-8px)`;
+                  e.currentTarget.style.boxShadow = '0 15px 30px rgba(0,0,0,0.12), 0 5px 10px rgba(0,0,0,0.08)';
+                  e.currentTarget.style.zIndex = '20';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = `rotate(${rot}deg)`;
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)';
+                  e.currentTarget.style.zIndex = '1';
+                }}
+                >
+                  <img src={m.url} alt="Memory" style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 2, display: 'block' }} />
+                  <input
+                    className="beautiful-mem-input"
+                    value={m.caption || ''}
+                    onChange={(e) => setCaption(m.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Add caption..."
+                    style={{
+                      width: '100%',
+                      padding: '8px 4px 0',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#ff4d85',
+                      fontSize: '0.95rem',
+                      fontFamily: "'Dancing Script', cursive",
+                      fontWeight: 600,
+                      textAlign: 'center',
+                      outline: 'none',
+                    }}
+                  />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); removeMemory(m.id); }} 
+                    className="mem-remove-btn"
+                    style={{ 
+                      position: 'absolute', 
+                      top: -12, 
+                      right: -12, 
+                      width: 28, 
+                      height: 28, 
+                      borderRadius: '50%', 
+                      background: '#fff', 
+                      border: '1px solid #ffe1e8',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.12)',
+                      color: '#ff4d85', 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#fff0f3'; e.currentTarget.style.color = '#e6005c'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#ff4d85'; }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          
+          <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <h4 style={{ margin: 0, color: '#ff4d85', fontSize: '1.4rem', fontWeight: 700, fontFamily: "'Dancing Script', cursive", textShadow: '0 1px 4px rgba(255, 77, 133, 0.1)' }}>
+              {memories.length} Beautiful {memories.length === 1 ? 'Memory' : 'Memories'} ❤️
+            </h4>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── New Step: Password & Photo ────────────────────────────────────────────────
+function PasswordPhotoStep({
+  form,
+  setForm,
+}: {
+  form: FormState;
+  setForm: (f: FormState) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [objectFit, setObjectFit] = useState<'cover' | 'contain'>('cover');
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [shape, setShape] = useState<string>('circle');
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setOriginalFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setSelectedImage(dataUrl);
+      // Immediately preserve the uploaded photo in form state so it is never lost even if user doesn't crop
+      setForm({ ...form, verificationPhoto: dataUrl });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onCropComplete = useCallback((croppedArea: any, croppedAreaPx: any) => {
+    setCroppedAreaPixels(croppedAreaPx);
+  }, []);
+
+  const handleApply = async () => {
+    if (!selectedImage || !croppedAreaPixels || !originalFile) return;
+
+    try {
+      setUploading(true);
+      const croppedImageBase64 = await getCroppedImg(selectedImage, croppedAreaPixels, 0, { horizontal: false, vertical: false }, shape);
+
+      const fileExt = originalFile.name.split('.').pop() || 'jpg';
+      const originalFileName = `original-${Date.now()}.${fileExt}`;
+      const finalFileName = `verification-${Date.now()}.png`;
+
+      let originalUrl = selectedImage;
+      let finalUrl = croppedImageBase64;
+
+      try {
+        // Upload original
+        const { error: err1 } = await supabase.storage.from('verification-photos').upload(originalFileName, originalFile, { upsert: false });
+        if (!err1) {
+          originalUrl = supabase.storage.from('verification-photos').getPublicUrl(originalFileName).data.publicUrl;
+        }
+
+        // Upload final png
+        const res = await fetch(croppedImageBase64);
+        const blob = await res.blob();
+        const croppedFile = new File([blob], finalFileName, { type: 'image/png' });
+
+        const { error: err2 } = await supabase.storage.from('verification-photos').upload(finalFileName, croppedFile, { upsert: false });
+        if (!err2) {
+          finalUrl = supabase.storage.from('verification-photos').getPublicUrl(finalFileName).data.publicUrl;
+        }
+      } catch (storageErr) {
+        console.warn('Supabase storage upload failed, using local base64:', storageErr);
+      }
+
+      const configJson = JSON.stringify({
+        originalUrl: originalUrl && originalUrl.startsWith('http') ? originalUrl : undefined,
+        finalUrl,
+        config: { shape, crop, zoom, objectFit }
+      });
+
+      setForm({ ...form, verificationPhoto: configJson });
+      setSelectedImage(null);
+    } catch (e) {
+      console.error(e);
+      alert('Error cropping image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const shapes = [
+    { id: 'rect', label: 'Rectangle' },
+    { id: 'square', label: 'Square' },
+    { id: 'rounded-rectangle', label: 'Rounded Rectangle' },
+    { id: 'circle', label: 'Circle' },
+    { id: 'oval', label: 'Oval' },
+    { id: 'heart', label: 'Heart' },
+    { id: 'triangle', label: 'Triangle' },
+    { id: 'hexagon', label: 'Hexagon' },
+    { id: 'star', label: 'Star' },
+  ];
+
+  const getClipPath = (s: string) => {
+    switch (s) {
+      case 'circle': return 'circle(50% at 50% 50%)';
+      case 'oval': return 'ellipse(50% 50% at 50% 50%)';
+      case 'rounded-rectangle': return 'inset(0 round 15%)';
+      case 'heart': return 'path("M 50 25 C 50 10, 10 5, 5 35 C 0 60, 30 70, 50 95 C 70 70, 100 60, 95 35 C 90 5, 50 10, 50 25 Z")';
+      case 'triangle': return 'polygon(50% 0%, 0% 100%, 100% 100%)';
+      case 'hexagon': return 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+      case 'star': return 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
+      case 'square': return 'inset(0)';
+      default: return 'inset(0)';
+    }
+  };
+
+  let displayUrl = form.verificationPhoto;
+  if (displayUrl && displayUrl.startsWith('{')) {
+    try {
+      displayUrl = JSON.parse(displayUrl).finalUrl;
+    } catch (e) {}
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 24 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(123,63,228,0.3), rgba(255,31,140,0.3))', border: '2px solid rgba(139,92,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Lock size={22} style={{ color: '#A78BFA' }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 2 of 6</div>
+          <h2 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Birthday Verification</h2>
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Add a personal photo and protect the surprise with a birthday password. 💖</p>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 10 }}>Personal Photo</label>
+
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+
+        {selectedImage ? (
+          <div style={{ background: 'rgba(13,9,24,0.9)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(139,92,246,0.2)' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Shape</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {shapes.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setShape(s.id)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      background: shape === s.id ? 'rgba(255,31,140,0.15)' : 'rgba(255,255,255,0.04)',
+                      border: shape === s.id ? '1px solid rgba(255,31,140,0.5)' : '1px solid rgba(139,92,246,0.2)',
+                      color: shape === s.id ? '#FF4DA6' : 'rgba(255,255,255,0.7)',
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ position: 'relative', width: '100%', height: 300, background: '#000', overflow: 'hidden' }}>
+              <style>{`
+                .reactEasyCrop_CropArea {
+                  clip-path: ${getClipPath(shape)} !important;
+                }
+                .reactEasyCrop_Container {
+                  background-color: #000;
+                }
+              `}</style>
+              <Cropper
+                image={selectedImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={shape === 'square' || shape === 'circle' || shape === 'heart' || shape === 'star' ? 1 : undefined}
+                objectFit={objectFit}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                <span style={{ fontSize: 13, color: '#fff' }}>Zoom:</span>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: '#FF4DA6' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setObjectFit(objectFit === 'cover' ? 'contain' : 'cover')}
+                  style={{ padding: '8px 16px', borderRadius: 8, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', fontSize: 13, cursor: 'pointer' }}
+                >
+                  Mode: {objectFit === 'cover' ? 'Fill' : 'Fit'}
+                </button>
+                <div style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  onClick={() => setSelectedImage(null)}
+                  style={{ padding: '8px 16px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.6)', border: 'none', fontSize: 13, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  disabled={uploading}
+                  style={{ padding: '8px 20px', borderRadius: 8, background: '#FF4DA6', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: uploading ? 'wait' : 'pointer' }}
+                >
+                  {uploading ? 'Applying...' : 'Apply Customization'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : displayUrl ? (
+          <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,31,140,0.35)', boxShadow: '0 0 25px rgba(255,31,140,0.15)', display: 'flex', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', padding: 20 }}>
+            <img src={displayUrl} alt="Birthday verification" style={{ maxWidth: '100%', maxHeight: 240, objectFit: 'contain', display: 'block' }} />
+            <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                style={{ padding: '6px 12px', borderRadius: 9999, background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <Edit3 size={14} /> Change
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, verificationPhoto: null })}
+                style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.65)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            style={{ width: '100%', padding: '32px 20px', borderRadius: 16, background: 'linear-gradient(135deg, rgba(255,31,140,0.06), rgba(167,139,250,0.06))', border: '2px dashed rgba(139,92,246,0.35)', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, fontSize: 13 }}
+          >
+            <Upload size={28} style={{ color: '#FF4DA6' }} />
+            <span style={{ color: '#fff', fontWeight: 600 }}>Upload Personal Photo</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>This photo will appear on the birthday verification page.</span>
           </button>
         )}
       </div>
-      {memories.length === 0 && (
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', margin: 0 }}>
-          No memories added yet. Click the box above to upload your first photo.
-        </p>
-      )}
     </>
   );
 }
 
 // ── Step 4: Special Video ──────────────────────────────────────────────────────
-function Step4({ form, setForm }: { form: any; setForm: (f: any) => void }) {
+function Step4({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const youtubeId = (() => {
     const m = (form.videoUrl ?? '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
@@ -395,7 +898,7 @@ function Step4({ form, setForm }: { form: any; setForm: (f: any) => void }) {
           <Video size={22} style={{ color: '#A78BFA' }} />
         </div>
         <div>
-          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 4 of 4</div>
+          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 6 of 6</div>
           <h2 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Special Video</h2>
           <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Add a video message or a favorite clip. 🎬</p>
         </div>
@@ -457,26 +960,83 @@ function Step4({ form, setForm }: { form: any; setForm: (f: any) => void }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 18, padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(139,92,246,0.2)' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={form.usePassword} onChange={(e) => setForm({ ...form, usePassword: e.target.checked, password: '' })} style={{ accentColor: '#FF1F8C' }} />
-          <Lock size={14} style={{ color: '#FF4DA6' }} /> Protect this surprise with a password (optional)
-        </label>
-        {form.usePassword && (
-          <div style={{ marginTop: 12 }}>
-            <InputField icon={<Lock size={16} />} placeholder="Choose a password" type="text" value={form.password} onChange={(v) => setForm({ ...form, password: v })} />
-            <p style={{ margin: '8px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Anyone with the link will need this password to view the surprise.</p>
-          </div>
-        )}
-      </div>
+
     </>
   );
 }
 
+
+
+function BalloonMessageStep({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
+
+  const addMessage = () => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setForm({ ...form, balloonMessages: [...form.balloonMessages, { id, message: '', emoji: '🎈' }] });
+  };
+  const updateMessage = (id: string, field: 'message' | 'emoji', value: string) => {
+    setForm({
+      ...form,
+      balloonMessages: form.balloonMessages.map((m) => (m.id === id ? { ...m, [field]: value } : m)),
+    });
+  };
+  const removeMessage = (id: string) => {
+    setForm({ ...form, balloonMessages: form.balloonMessages.filter((m) => m.id !== id) });
+  };
+  const EMOJIS = ['🎈', '🎉', '🥳', '❤️', '🍰'];
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 24 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(123,63,228,0.3), rgba(255,31,140,0.3))', border: '2px solid rgba(139,92,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <PartyPopper size={22} style={{ color: '#A78BFA' }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: '#FF4DA6', fontWeight: 600, marginBottom: 2 }}>Step 5 of 6</div>
+          <h2 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Balloon Pop Message</h2>
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Customize messages shown after each balloon is popped.</p>
+        </div>
+      </div>
+
+      {form.balloonMessages.map((msg) => (
+        <div key={msg.id} style={{ marginBottom: 16, padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(139,92,246,0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <select
+              value={msg.emoji}
+              onChange={(e) => updateMessage(msg.id, 'emoji', e.target.value)}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 6, color: '#fff', padding: '4px 8px' }}
+            >
+              {EMOJIS.map((e) => (
+                <option key={e} value={e} style={{ background: '#1a0f2e' }}>
+                  {e}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => removeMessage(msg.id)} style={{ background: 'transparent', border: 'none', color: '#FF4DA6', cursor: 'pointer' }}>
+              ✕
+            </button>
+          </div>
+          <InputField
+            icon={<MessageCircle size={16} />}
+            placeholder="Enter your message"
+            value={msg.message}
+            onChange={(v) => updateMessage(msg.id, 'message', v)}
+          />
+          <div style={{ marginTop: 10, padding: 8, borderRadius: 6, background: 'rgba(255,255,255,0.05)' }}>
+            <strong>Preview:</strong> {msg.emoji} {msg.message}
+          </div>
+        </div>
+      ))}
+
+      <button onClick={addMessage} style={{ padding: '8px 16px', borderRadius: 9999, background: 'rgba(255,31,140,0.15)', border: '1px solid rgba(255,31,140,0.5)', color: '#FF4DA6', fontWeight: 600, cursor: 'pointer' }}>
+        + Add Message
+      </button>
+    </>
+  );
+}
 // ── Share screen ───────────────────────────────────────────────────────────────
 function ShareScreen({ slug, onBack }: { slug: string; onBack: () => void }) {
   const [copied, setCopied] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [previewPhase, setPreviewPhase] = useState<string | null>(null);
   const shareUrl = `${window.location.origin}/s/${slug}`;
 
   const copy = async () => {
@@ -520,7 +1080,7 @@ function ShareScreen({ slug, onBack }: { slug: string; onBack: () => void }) {
 
   const downloadQR = () => {
     // Free QR code via public API; rendered as an image the user can save.
-    const img = new (window as any).Image() as HTMLImageElement;
+    const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       const canvas = document.createElement('canvas');
@@ -555,6 +1115,14 @@ function ShareScreen({ slug, onBack }: { slug: string; onBack: () => void }) {
         <button onClick={onBack} className="btn-surprise" style={{ marginTop: 16, padding: '12px 28px', borderRadius: 9999, color: '#fff', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <Home size={16} /> Back to Home
         </button>
+      </div>
+    );
+  }
+
+  if (previewPhase) {
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 100000, background: '#07050F' }}>
+        <SurpriseView slug={slug} previewMode={previewPhase} onBackFromPreview={() => setPreviewPhase(null)} />
       </div>
     );
   }
@@ -609,6 +1177,21 @@ function ShareScreen({ slug, onBack }: { slug: string; onBack: () => void }) {
             <button onClick={() => shareTo('sms')} style={quickBtn}><Phone size={14} /> SMS</button>
           </div>
         </div>
+
+        {/* Preview Your Surprise */}
+        <div style={{ marginTop: 24, borderTop: '1px solid rgba(139,92,246,0.15)', paddingTop: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Eye size={16} color="#A78BFA" /> Preview Your Surprise
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button onClick={() => setPreviewPhase('birthday-film')} style={previewBtn}>Preview Heart Arrow</button>
+            <button onClick={() => setPreviewPhase('cake-animation')} style={previewBtn}>Preview Cake Animation</button>
+            <button onClick={() => setPreviewPhase('balloon-reasons')} style={previewBtn}>Preview Balloon Pop</button>
+            <button onClick={() => setPreviewPhase('letter')} style={previewBtn}>Preview Letter</button>
+            <button onClick={() => setPreviewPhase('memories')} style={previewBtn}>Preview Beautiful Memories</button>
+            <button onClick={() => setPreviewPhase('video')} style={previewBtn}>Preview Special Video</button>
+          </div>
+        </div>
       </div>
 
       <button onClick={onBack} style={{ marginTop: 20, padding: '12px 28px', borderRadius: 9999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -627,6 +1210,17 @@ const quickBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
   borderRadius: 9999, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.2)',
   color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+};
+const previewBtn: React.CSSProperties = {
+  padding: '10px 12px',
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(139,92,246,0.15)',
+  color: 'rgba(255,255,255,0.7)',
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+  textAlign: 'center',
 };
 
 // ── Sidebar (extracted) ─────────────────────────────────────────────────────────
@@ -703,6 +1297,7 @@ export default function GenerateSurprise({ onBack }: Props) {
     relationship: '',
     birthdayDate: '',
     theme: 'pink',
+    verificationPhoto: null as string | null,
     letter: '',
     letterPhoto: null as string | null,
     memories: [] as Memory[],
@@ -713,23 +1308,25 @@ export default function GenerateSurprise({ onBack }: Props) {
     videoDedication: '',
     usePassword: false,
     password: '',
+    balloonMessages: [] as { id: string; message: string; emoji: string; }[],
   });
 
   const goNext = async () => {
-    if (currentStep < 4) { setCurrentStep(currentStep + 1); return; }
+    if (currentStep < 6) { setCurrentStep(currentStep + 1); return; }
     // Final step: save to Supabase
     setSaving(true);
     setSaveError('');
     try {
       const slug = generateSlug(form.name);
       const passwordHash = form.usePassword && form.password ? await hashPassword(form.password) : null;
-      const { error } = await supabase.from('surprises').insert({
+      const surprisePayload = {
         slug,
         creator_name: form.yourName || 'Someone',
         recipient_name: form.name || 'Someone Special',
         nickname: form.nickname || null,
         relationship: form.relationship || null,
         birthday_date: form.birthdayDate || null,
+        verification_photo_url: form.verificationPhoto,
         theme: form.theme || 'pink',
         letter: form.letter || null,
         letter_photo_url: form.letterPhoto,
@@ -738,13 +1335,33 @@ export default function GenerateSurprise({ onBack }: Props) {
         video_file_url: form.videoFile,
         video_title: form.videoTitle || null,
         video_dedication: form.videoDedication || null,
+        balloon_personal_message: JSON.stringify(form.balloonMessages),
         password_hash: passwordHash,
-      });
-      if (error) throw error;
+        created_at: new Date().toISOString(),
+      };
+
+      await saveSurpriseLocally(`surprise_${slug}`, { id: `surp_${Date.now()}`, ...surprisePayload });
+
+      try {
+        const { data: insertedData, error } = await supabase.from('surprises').insert(surprisePayload).select().maybeSingle();
+        if (error) {
+          console.warn('Supabase insert note:', error);
+        } else if (insertedData) {
+          await saveSurpriseLocally(`surprise_${slug}`, insertedData);
+        }
+      } catch (networkErr) {
+        console.warn('Supabase unreachable, using local storage fallback:', networkErr);
+      }
+
       setCreatedSlug(slug);
       setDone(true);
-    } catch (e: any) {
-      setSaveError(e?.message || 'Could not save your surprise. Please try again.');
+    } catch (e: unknown) {
+      console.error('SAVE SURPRISE ERROR:', e);
+      setSaveError(
+        e instanceof Error
+          ? e.message
+          : JSON.stringify(e)
+      );
     } finally {
       setSaving(false);
     }
@@ -754,7 +1371,14 @@ export default function GenerateSurprise({ onBack }: Props) {
     else onBack();
   };
 
-  const StepBody = [Step1, Step2, Step3, Step4][currentStep - 1];
+  const StepBody = [
+    Step1,
+    PasswordPhotoStep,
+    Step2,
+    Step3,
+    BalloonMessageStep,
+    Step4,
+  ][currentStep - 1];
 
   if (done && createdSlug) {
     return (
@@ -873,7 +1497,7 @@ export default function GenerateSurprise({ onBack }: Props) {
               >
                 {saving ? (
                   <><Loader2 size={18} className="animate-spin" /> Saving...</>
-                ) : currentStep === 4 ? (
+                ) : currentStep === 6 ? (
                   <><Gift size={18} /> Generate Surprise</>
                 ) : (
                   <>Continue

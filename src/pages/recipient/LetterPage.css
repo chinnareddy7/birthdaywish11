@@ -1,0 +1,305 @@
+/* =========================================================
+   LETTER PAGE - Elegant Romantic Theme
+   ========================================================= */
+
+.letter-page-root {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  
+  /* Warm cream / ivory background */
+  background-color: #fcfaf8;
+  
+  /* Very subtle soft peach/pink gradient and ambient glow */
+  background-image: 
+    radial-gradient(circle at 50% 30%, rgba(255, 228, 230, 0.6) 0%, rgba(252, 250, 248, 0) 60%),
+    radial-gradient(circle at 80% 80%, rgba(255, 235, 240, 0.4) 0%, rgba(252, 250, 248, 0) 50%);
+  
+  color: #333;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  
+  /* Smooth transitions */
+  transition: all 0.5s ease;
+}
+
+.letter-page-root.is-opened {
+  /* When opened, allow scrolling and shift alignment to top */
+  justify-content: flex-start;
+  padding-top: 40px;
+}
+
+.letter-page-root:not(.is-opened) {
+  /* Center everything before opening */
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------
+   Typography
+   --------------------------------------------------------- */
+.letter-title {
+  font-family: "Dancing Script", cursive;
+  font-size: 3.5rem;
+  color: #d16b77;
+  text-align: center;
+  margin: 0 0 40px 0;
+  text-shadow: 0 2px 8px rgba(209, 107, 119, 0.15);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 600px) {
+  .letter-title {
+    font-size: 2.8rem;
+    margin-bottom: 30px;
+  }
+}
+
+/* ---------------------------------------------------------
+   Envelope Container
+   --------------------------------------------------------- */
+.envelope-container {
+  position: relative;
+  width: 340px;
+  height: 240px;
+  margin: 0 auto;
+  perspective: 1200px;
+  z-index: 10;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 400px) {
+  .envelope-container {
+    width: 290px;
+    height: 200px;
+  }
+}
+
+/* Subtle idle floating animation */
+.envelope-idle {
+  animation: gentleFloat 4s ease-in-out infinite alternate;
+}
+
+@keyframes gentleFloat {
+  0% { transform: translateY(0px) rotate(0deg); }
+  100% { transform: translateY(-8px) rotate(1.5deg); }
+}
+
+/* The Envelope body */
+.envelope {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #f8f4ed; /* Ivory paper */
+  border-radius: 12px;
+  box-shadow: 
+    0 20px 40px rgba(209, 107, 119, 0.18),
+    0 8px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(209, 107, 119, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Envelope Flaps (Bottom, Left, Right folded over) */
+.envelope-front {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+/* Create the triangular flap look using borders */
+.envelope-front::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  /* width 340 / 2 = 170 */
+  border-left: 170px solid rgba(248, 244, 237, 0.96);
+  border-right: 170px solid rgba(248, 244, 237, 0.96);
+  /* height 240 / 2 = 120 */
+  border-top: 120px solid transparent;
+  border-bottom: 120px solid #f3ece0;
+  filter: drop-shadow(0 -4px 6px rgba(0,0,0,0.04));
+}
+
+@media (max-width: 400px) {
+  .envelope-front::before {
+    border-left-width: 145px;
+    border-right-width: 145px;
+    border-top-width: 100px;
+    border-bottom-width: 100px;
+  }
+}
+
+/* Top Flap */
+.envelope-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60%;
+  background: #fdfaf5;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: top;
+  z-index: 5;
+  /* Instead of box-shadow which is clipped, we can just rely on the shape */
+}
+
+/* Heart Seal */
+.envelope-seal {
+  position: absolute;
+  bottom: 0px; /* Position near the tip of the flap */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 44px;
+  background: #ff5e6c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(255, 94, 108, 0.4);
+  z-index: 6;
+  color: white;
+}
+
+/* ---------------------------------------------------------
+   "Open Me" Hint
+   --------------------------------------------------------- */
+.open-hint {
+  position: absolute;
+  bottom: -60px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: "Dancing Script", cursive;
+  font-size: 2rem;
+  color: #d16b77;
+  opacity: 0.8;
+  animation: pulseHint 2.5s infinite ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes pulseHint {
+  0%, 100% { opacity: 0.5; transform: scale(0.98); }
+  50% { opacity: 0.95; transform: scale(1.03); }
+}
+
+/* ---------------------------------------------------------
+   Letter Paper (Expanded state)
+   --------------------------------------------------------- */
+.letter-paper-expanded {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 60px;
+  background: #fffcf8;
+  border-radius: 12px;
+  padding: 50px 45px;
+  box-sizing: border-box;
+  box-shadow: 
+    0 25px 50px rgba(209, 107, 119, 0.12),
+    0 0 0 1px rgba(209, 107, 119, 0.05);
+  z-index: 20;
+}
+
+.letter-paper-expanded::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #ffc2c9, #ff9ba7);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .letter-paper-expanded {
+    padding: 40px 25px;
+    width: 92%;
+  }
+}
+
+/* Letter Typography */
+.letter-greeting {
+  font-family: "Dancing Script", cursive;
+  font-size: 2.4rem;
+  color: #333;
+  margin-bottom: 25px;
+  font-weight: bold;
+}
+
+.letter-body {
+  font-family: 'Georgia', serif;
+  font-size: 1.15rem;
+  line-height: 1.85;
+  color: #4a4a4a;
+  white-space: pre-wrap;
+  min-height: 150px;
+}
+
+@media (max-width: 600px) {
+  .letter-body {
+    font-size: 1.05rem;
+    line-height: 1.7;
+  }
+}
+
+.letter-closing {
+  margin-top: 45px;
+  font-family: "Dancing Script", cursive;
+  font-size: 2rem;
+  color: #d16b77;
+}
+
+.letter-signature {
+  font-family: 'Georgia', serif;
+  font-size: 1.3rem;
+  color: #333;
+  font-weight: bold;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------------------------------------------------------
+   Continue Button
+   --------------------------------------------------------- */
+.continue-btn {
+  margin-top: 40px;
+  padding: 15px 45px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ff8da1, #ff5e6c);
+  color: #fff;
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  box-shadow: 0 8px 25px rgba(255, 94, 108, 0.35);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.continue-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(255, 94, 108, 0.45);
+}
+
+.continue-btn:active {
+  transform: translateY(0) scale(0.98);
+}

@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
+
+type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
 export interface Theme {
   bg: string;
@@ -29,7 +31,6 @@ function rand(seed: number) {
 export function CelebrationConfetti() {
   const pieces = useMemo(() => Array.from({ length: 80 }).map((_, i) => {
     const colors = ['#FF4DA6', '#A78BFA', '#FCD34D', '#60A5FA', '#34D399', '#FF8FB3', '#C026D3'];
-    const r = rand(i + 1);
     return {
       id: i,
       left: rand(i + 2) * 100,
@@ -95,12 +96,12 @@ export function ConfettiExplosion() {
             height: p.size,
             background: p.color,
             borderRadius: 2,
-            ['--dx' as any]: p.dx,
-            ['--dy' as any]: p.dy,
-            ['--dur' as any]: `${p.duration}s`,
+            '--dx': p.dx,
+            '--dy': p.dy,
+            '--dur': `${p.duration}s`,
             animationDelay: `${p.delay}s`,
             boxShadow: `0 0 8px ${p.color}88`,
-          }}
+          } as CSSVars}
         />
       ))}
     </div>
@@ -129,10 +130,10 @@ export function RisingBalloons({ accent, accent2 }: { accent: string; accent2: s
             position: 'absolute',
             bottom: '-80px',
             left: b.left,
-            ['--drift' as any]: b.drift,
-            ['--dur' as any]: b.dur,
+            '--drift': b.drift,
+            '--dur': b.dur,
             animationDelay: b.delay,
-          }}
+          } as CSSVars}
         >
           <div style={{ width: b.size, height: b.size * 1.2, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', background: `radial-gradient(circle at 33% 28%, ${b.color}dd, ${b.color}77)`, boxShadow: `0 0 16px ${b.color}55` }}>
             <div style={{ width: b.size * 0.22, height: b.size * 0.12, borderRadius: '50%', background: 'rgba(255,255,255,0.4)', margin: '18% 0 0 18%' }} />
@@ -168,12 +169,12 @@ export function FloatingHearts({ accent }: { accent: string }) {
             position: 'absolute',
             bottom: '-30px',
             left: h.left,
-            ['--dur' as any]: h.dur,
-            ['--rot' as any]: h.rot,
+            '--dur': h.dur,
+            '--rot': h.rot,
             animationDelay: h.delay,
             color: h.color,
             fontSize: h.size,
-          }}
+          } as CSSVars}
         >
           <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 21C12 21 3 14.5 3 8.5C3 5.5 5.5 3 9 3C10.5 3 12 4 12 4C12 4 13.5 3 15 3C18.5 3 21 5.5 21 8.5C21 14.5 12 21 12 21Z" />
@@ -240,11 +241,11 @@ export function LightHearts({ accent, count = 8 }: { accent: string; count?: num
     delay: `${rand(i + 13) * 4}s`,
     dur: `${5 + rand(i + 14) * 4}s`,
     rot: `${(rand(i + 15) - 0.5) * 30}deg`,
-  })), [accent, count]);
+  })), [count]);
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
       {hearts.map((h) => (
-        <div key={h.id} className="animate-heart-up" style={{ position: 'absolute', bottom: '-20px', left: h.left, ['--dur' as any]: h.dur, ['--rot' as any]: h.rot, animationDelay: h.delay, color: `${accent}55`, opacity: 0.5 }}>
+        <div key={h.id} className="animate-heart-up" style={{ position: 'absolute', bottom: '-20px', left: h.left, '--dur': h.dur, '--rot': h.rot, animationDelay: h.delay, color: `${accent}55`, opacity: 0.5 } as CSSVars}>
           <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 21C12 21 3 14.5 3 8.5C3 5.5 5.5 3 9 3C10.5 3 12 4 12 4C12 4 13.5 3 15 3C18.5 3 21 5.5 21 8.5C21 14.5 12 21 12 21Z" /></svg>
         </div>
       ))}

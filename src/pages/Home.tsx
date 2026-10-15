@@ -126,9 +126,9 @@ function BirthdayCake() {
   );
 }
 
-function Balloon({ color, size = 80, style }: { color: string; size?: number; style?: React.CSSProperties }) {
+function Balloon({ color, size = 80, style, className }: { color: string; size?: number; style?: React.CSSProperties; className?: string }) {
   return (
-    <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', ...style }}>
+    <div className={className} style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', ...style }}>
       <div style={{ width: size, height: size * 1.2, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', background: `radial-gradient(circle at 33% 28%, ${color}dd, ${color}88)`, boxShadow: `inset -6px -8px 16px rgba(0,0,0,0.3), 0 0 20px ${color}44`, position: 'relative' }}>
         <div style={{ position: 'absolute', width: size * 0.22, height: size * 0.14, borderRadius: '50%', background: 'rgba(255,255,255,0.38)', top: '20%', left: '20%' }} />
         <div style={{ position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `8px solid ${color}aa` }} />

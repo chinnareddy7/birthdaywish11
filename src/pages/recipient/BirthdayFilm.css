@@ -1,0 +1,681 @@
+:root {
+  --film-paper-0: #fff6ee;
+  --film-paper-1: #f9e2d2;
+  --film-paper-2: #f2c9b8;
+  --film-rose-deep: #a80f43;
+  --film-rose: #d4235c;
+  --film-rose-lift: #ff5f86;
+  --film-wine: #6e0a31;
+  --film-gold-1: #ffcf6a;
+  --film-gold-2: #e8a23d;
+  --film-ink: #7a4a55;
+  --film-ink-soft: #a9808a;
+  --film-cream: #fff3ea;
+  --film-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.film-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #12060c;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  user-select: none;
+  z-index: 100;
+}
+
+.film-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================================
+   THE TREE CANVAS (Act 4)
+   ============================================================ */
+.film-tree {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+}
+
+/* ============================================================
+   ACT 1 — THE INVITATION
+   ============================================================ */
+.film-hero {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.film-hero__bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 88% at 50% 24%, #fff8f1 0%, var(--film-paper-0) 38%, var(--film-paper-1) 74%, var(--film-paper-2) 100%);
+}
+
+.film-hero__bg::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(78vw, 720px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 190, 150, 0.55), rgba(255, 150, 170, 0.16) 46%, transparent 70%);
+  filter: blur(6px);
+}
+
+.film-hero__motes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.film-mote {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 236, 214, 0.9), rgba(255, 206, 180, 0.15) 55%, transparent 72%);
+  will-change: transform, opacity;
+}
+
+.film-hero__eyebrow {
+  position: absolute;
+  top: 12%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(16px, 3.6vw, 26px);
+  letter-spacing: 0.06em;
+  color: #a85069;
+  text-shadow: 0 1px 10px rgba(255, 248, 241, 0.9);
+  opacity: 0;
+}
+
+.film-targetWrap {
+  position: absolute;
+  top: 33%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.film-target {
+  position: relative;
+  width: clamp(120px, 27vw, 208px);
+  aspect-ratio: 100/92;
+  will-change: transform;
+  transform-origin: 50% 60%;
+}
+
+.film-target__heart {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.film-heart__glow {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 230%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scale(1);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 120, 150, 0.55), rgba(255, 90, 130, 0.18) 42%, transparent 68%);
+  filter: blur(4px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.film-heart__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 60%;
+  filter: drop-shadow(0 10px 22px rgba(168, 15, 64, 0.34)) drop-shadow(0 3px 6px rgba(120, 10, 48, 0.3));
+  will-change: transform;
+}
+
+/* Archery bow & arrow */
+.film-archery {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: clamp(100px, 18vw, 168px);
+  cursor: grab;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  will-change: transform;
+}
+
+.film-archery:active {
+  cursor: grabbing;
+}
+
+.film-bow {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 12px 18px rgba(90, 40, 15, 0.3));
+  overflow: visible;
+}
+
+.film-aim {
+  position: absolute;
+  left: 50%;
+  bottom: 32%;
+  width: 2px;
+  height: 190%;
+  margin-left: -1px;
+  transform-origin: bottom center;
+  background: linear-gradient(0deg, rgba(255, 214, 150, 0.6) 0%, rgba(255, 150, 170, 0.22) 52%, transparent 78%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.film-arrow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  bottom: 36%;
+  width: 17.5%;
+  height: auto;
+  overflow: visible;
+  will-change: transform;
+  filter: drop-shadow(0 5px 7px rgba(90, 40, 15, 0.36));
+}
+
+.film-arrow__wings {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+}
+
+.film-arrow__wings .wingL,
+.film-arrow__wings .wingR {
+  transform-box: fill-box;
+}
+
+.film-arrow__wings .wingL {
+  transform-origin: 88% 60%;
+  animation: filmFlapL 2.6s ease-in-out infinite;
+}
+
+.film-arrow__wings .wingR {
+  transform-origin: 12% 60%;
+  animation: filmFlapR 2.6s ease-in-out infinite;
+}
+
+@keyframes filmFlapL {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-11deg); }
+}
+
+@keyframes filmFlapR {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(11deg); }
+}
+
+.film-hero__hint {
+  position: absolute;
+  bottom: 8%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-style: italic;
+  font-size: clamp(14px, 3.1vw, 20px);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #b06a7c;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ============================================================
+   ACT 2 — THE FLOOD
+   ============================================================ */
+.film-flood {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140px;
+  height: 140px;
+  margin: -70px 0 0 -70px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 34%, var(--film-rose-lift), var(--film-rose) 46%, var(--film-rose-deep) 100%);
+  z-index: 5;
+  opacity: 0;
+  transform: scale(0.001);
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+/* ============================================================
+   ACT 3 — THE WISH FIELD
+   ============================================================ */
+.film-field {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: radial-gradient(120% 100% at 50% 8%, #d5265f 0%, var(--film-rose) 42%, var(--film-rose-deep) 78%, var(--film-wine) 100%);
+  color: #fff;
+}
+
+.film-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(46px);
+  opacity: 0;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.film-blob--1 {
+  width: 58vmax;
+  height: 58vmax;
+  left: -18vmax;
+  top: -16vmax;
+  background: radial-gradient(circle, rgba(255, 130, 160, 0.9), transparent 62%);
+}
+
+.film-blob--2 {
+  width: 46vmax;
+  height: 46vmax;
+  right: -14vmax;
+  top: 22vmax;
+  background: radial-gradient(circle, rgba(255, 90, 120, 0.75), transparent 64%);
+}
+
+.film-blob--3 {
+  width: 52vmax;
+  height: 52vmax;
+  left: 24vmax;
+  bottom: -22vmax;
+  background: radial-gradient(circle, rgba(180, 20, 70, 0.8), transparent 66%);
+}
+
+.film-fgrid {
+  position: absolute;
+  inset: -6%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: clamp(38px, 7vw, 74px) clamp(38px, 7vw, 74px);
+  will-change: transform;
+}
+
+.film-fvignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(128% 96% at 50% 44%, transparent 50%, rgba(70, 6, 28, 0.5) 100%);
+}
+
+.film-camera {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(4px, 1.2vh, 12px);
+  padding: 0 6vw;
+  text-align: center;
+  will-change: transform;
+}
+
+.film-kEyebrow {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(16px, 3.6vw, 27px);
+  letter-spacing: 0.08em;
+  color: #ffd7c8;
+  opacity: 0;
+  transform: translateY(10px);
+  margin-bottom: clamp(2px, 1vh, 10px);
+}
+
+.film-headline {
+  font-family: "Fraunces", Georgia, serif;
+  line-height: 0.92;
+}
+
+.film-hl__line {
+  display: block;
+}
+
+.film-mask {
+  display: inline-block;
+  overflow: hidden;
+  padding: 0.14em 0.06em;
+  margin: -0.14em -0.06em;
+}
+
+.film-hl__word {
+  display: inline-block;
+  font-weight: 900;
+  font-size: clamp(48px, 14vw, 150px);
+  letter-spacing: -0.02em;
+  color: #fff6f1;
+  text-shadow: 0 6px 34px rgba(60, 4, 24, 0.34), 0 2px 3px rgba(90, 8, 36, 0.42);
+}
+
+.film-hl__ch {
+  display: inline-block;
+  will-change: transform;
+}
+
+.film-uline {
+  width: clamp(150px, 40vw, 380px);
+  height: auto;
+  margin-top: clamp(4px, 1.4vh, 14px);
+  color: var(--film-gold-1);
+  filter: drop-shadow(0 2px 8px rgba(255, 180, 90, 0.5));
+}
+
+.film-kSub {
+  margin-top: clamp(12px, 2.4vh, 26px);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-style: italic;
+  font-size: clamp(14px, 3.4vw, 24px);
+  letter-spacing: 0.05em;
+  color: #ffdfd2;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.film-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 16vh;
+  background: #12040b;
+  z-index: 3;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.film-bar--top { top: 0; }
+.film-bar--bot { bottom: 0; }
+
+/* ============================================================
+   THE HANDOFF BLOOM
+   ============================================================ */
+.film-bloom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff2d6 30%, rgba(255, 214, 150, 0.85) 55%, rgba(255, 190, 150, 0) 74%);
+  z-index: 8;
+  opacity: 0;
+  transform: scale(0.001);
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+/* ============================================================
+   ACT 4 — HAND-LETTERED WISH OVER BLOSSOM TREE
+   ============================================================ */
+.film-wish {
+  position: absolute;
+  left: 5.5%;
+  bottom: 12%;
+  max-width: 50%;
+  z-index: 6;
+  pointer-events: none;
+  color: var(--film-ink);
+  visibility: hidden;
+}
+
+.film-wish.is-in {
+  visibility: visible;
+}
+
+.film-wish::before {
+  content: "";
+  position: absolute;
+  inset: -18% -24% -24% -16%;
+  background: radial-gradient(84% 98% at 34% 52%, rgba(255, 250, 243, 0.94), rgba(255, 250, 243, 0.6) 48%, rgba(255, 250, 243, 0) 80%);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.film-wish.is-in::before {
+  opacity: 1;
+}
+
+.film-wish__eyebrow {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(14px, 3.2vw, 24px);
+  letter-spacing: 0.05em;
+  color: #9c4f63;
+  text-shadow: 0 1px 2px #fff8f1, 0 0 8px rgba(255, 248, 241, 0.95);
+}
+
+.film-wish__heroWrap {
+  position: relative;
+  display: inline-block;
+}
+
+.film-wish__heroWrap::before {
+  content: "";
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  top: -26%;
+  bottom: -22%;
+  background: radial-gradient(60% 70% at 46% 52%, rgba(255, 214, 168, 0.5), rgba(255, 150, 150, 0.2) 52%, transparent 74%);
+  filter: blur(14px);
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.film-wish__hero {
+  font-family: "Great Vibes", cursive;
+  font-weight: 400;
+  font-size: clamp(42px, 9.6vw, 86px);
+  line-height: 0.98;
+  margin: -0.02em 0 0.06em;
+  background: linear-gradient(180deg, #e85a83 0%, #c41f52 50%, #9c0f42 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(255, 252, 248, 0.98)) drop-shadow(0 2px 6px rgba(130, 18, 55, 0.45));
+  clip-path: inset(0 100% -28% -10%);
+  transform-origin: 8% 60%;
+}
+
+.film-wish__rule {
+  display: block;
+  width: clamp(46px, 13vw, 110px);
+  height: 2px;
+  margin: 0.12em 0 0.48em;
+  background: linear-gradient(90deg, var(--film-gold-2), rgba(232, 162, 61, 0));
+  box-shadow: 0 0 8px rgba(255, 247, 240, 0.9);
+  transform-origin: left center;
+}
+
+.film-wish__sub {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(13px, 2.9vw, 20px);
+  letter-spacing: 0.03em;
+  color: #6e3f4a;
+  text-shadow: 0 1px 2px #fff8f1, 0 0 8px rgba(255, 248, 241, 0.98);
+}
+
+.film-wish__eyebrow,
+.film-wish__rule,
+.film-wish__sub {
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(5px);
+  transition: opacity 0.8s ease, transform 0.9s var(--film-ease-out), filter 0.8s ease;
+}
+
+.film-wish__rule {
+  transform: translateY(12px) scaleX(0.3);
+}
+
+.film-wish.is-in .film-wish__eyebrow,
+.film-wish.is-in .film-wish__sub {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.film-wish.is-in .film-wish__rule {
+  opacity: 1;
+  transform: translateY(0) scaleX(1);
+  transition-delay: 1.35s;
+}
+
+.film-wish.is-in .film-wish__sub {
+  transition-delay: 1.55s;
+}
+
+.film-wish.is-in .film-wish__hero {
+  animation: filmWrite 1.2s cubic-bezier(0.62, 0.04, 0.24, 1) 0.35s forwards, filmWishBreath 4s ease-in-out 1.9s infinite;
+}
+
+@keyframes filmWishBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@keyframes filmWrite {
+  from { clip-path: inset(0 100% -28% -10%); }
+  to { clip-path: inset(0 -10% -28% -10%); }
+}
+
+/* ── Actions on bottom right / center ── */
+.film-actions {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.film-replay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font: 600 13px/1 "Cormorant Garamond", Georgia, serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a4a5a;
+  background: rgba(255, 248, 242, 0.85);
+  border: 1.5px solid rgba(150, 60, 80, 0.25);
+  box-shadow: 0 6px 20px -8px rgba(120, 20, 50, 0.3);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.film-replay-btn:hover {
+  background: #fff;
+  transform: translateY(-2px);
+  color: #c41f52;
+}
+
+.film-continue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border-radius: 999px;
+  font-family: "Sriracha", "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff4da6, #ff7882);
+  border: 2px solid #fff;
+  box-shadow: 0 8px 25px rgba(255, 77, 166, 0.45);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  animation: pulseContinueBtn 2s infinite ease-in-out;
+}
+
+@keyframes pulseContinueBtn {
+  0%, 100% {
+    box-shadow: 0 8px 25px rgba(255, 77, 166, 0.45);
+  }
+  50% {
+    box-shadow: 0 8px 35px rgba(255, 77, 166, 0.75);
+    transform: scale(1.03);
+  }
+}
+
+.film-continue-btn:hover {
+  background: linear-gradient(135deg, #ff1f8c, #ff5e6c);
+  transform: translateY(-2px) scale(1.05);
+}
+
+/* ── Lens / Grade ── */
+.film-grade {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}
+
+.film-grade__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(125% 95% at 50% 42%, transparent 54%, rgba(60, 18, 30, 0.14) 84%, rgba(40, 12, 22, 0.3) 100%);
+  mix-blend-mode: multiply;
+}
+
+@media screen and (max-width: 768px) {
+  .film-wish {
+    max-width: 90%;
+    left: 5%;
+    bottom: 15%;
+  }
+
+  .film-actions {
+    right: 16px;
+    bottom: 16px;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+
+  .film-continue-btn {
+    padding: 9px 18px;
+    font-size: 13px;
+  }
+}

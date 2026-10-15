@@ -1,0 +1,340 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;600&display=swap');
+
+.cake-page-wrapper {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  background: #fffaf8;
+  background-image: radial-gradient(ellipse at 50% 30%, #fffcfb 0%, #fff0ee 40%, #ffe1df 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  color: #333;
+}
+
+/* Background Ambient Glows */
+.cake-bg-ambient {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  pointer-events: none;
+}
+.cake-bg-1 {
+  top: 15%; left: 10%;
+  width: 450px; height: 450px;
+  background: radial-gradient(circle, rgba(255, 192, 203, 0.35), transparent 70%);
+}
+.cake-bg-2 {
+  bottom: 5%; right: 5%;
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(255, 218, 185, 0.35), transparent 70%);
+}
+
+/* Floating Background Particles */
+.cake-particle {
+  position: absolute;
+  pointer-events: none;
+}
+.cp-1 { top: 20%; left: 18%; animation: cakeFloat 6s infinite; color: rgba(255, 182, 193, 0.6); font-size: 24px; }
+.cp-2 { top: 65%; right: 15%; animation: cakeFloat 5s infinite 1s; color: rgba(255, 182, 193, 0.5); font-size: 18px; }
+.cp-3 { top: 35%; right: 22%; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 10px rgba(255,182,193,0.8); animation: cakeFloat 4s infinite 2s; }
+.cp-4 { bottom: 25%; left: 20%; width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 10px rgba(255,182,193,0.8); animation: cakeFloat 7s infinite 0.5s; }
+
+@keyframes cakeFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+/* Layout */
+.cake-layout {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+/* Typography */
+.cake-top-text {
+  text-align: center;
+  position: absolute;
+  top: -120px;
+  width: 100%;
+  z-index: 10;
+}
+.cake-title {
+  font-family: 'Dancing Script', cursive;
+  font-size: 3.2rem;
+  color: #cc5b7a;
+  margin: 0 0 8px;
+  font-weight: 600;
+  text-shadow: 0 2px 10px rgba(255, 105, 180, 0.1);
+}
+.cake-subtitle {
+  font-family: 'Inter', sans-serif;
+  color: #d9738e;
+  font-size: 1.1rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.text-anim-group-1 .cake-title { opacity: 0; animation: fadeUp 1s ease-out 1.5s forwards; }
+.text-anim-group-1 .cake-subtitle { opacity: 0; animation: fadeUp 1s ease-out 2s forwards; }
+.text-anim-group-2 { opacity: 0; animation: fadeScaleIn 0.8s ease-out forwards; }
+.wish-made { color: #ff4d85; font-size: 3.6rem; text-shadow: 0 0 15px rgba(255, 77, 133, 0.3); }
+
+/* Cake Button & Glow */
+.cake-stage-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  margin: 60px 0;
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cake-stage-btn:disabled {
+  cursor: default;
+}
+.stage-1 .cake-stage-btn:hover {
+  transform: scale(1.02);
+}
+.stage-1 .cake-stage-btn:active {
+  transform: scale(0.98);
+}
+.stage-2 .cake-stage-btn {
+  transform: scale(1.1);
+}
+.stage-3 .cake-stage-btn {
+  transform: scale(1);
+}
+
+.cake-glow-backdrop {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(255, 182, 193, 0.3) 0%, transparent 70%);
+  filter: blur(20px);
+  z-index: 1;
+  transition: all 0.8s ease;
+  animation: pulseBgGlow 3s infinite alternate;
+}
+.stage-2 .cake-glow-backdrop {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(255, 105, 180, 0.5) 0%, transparent 70%);
+}
+.stage-3 .cake-glow-backdrop {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(255, 182, 193, 0.4) 0%, transparent 70%);
+}
+
+.cake-stage-container {
+  position: relative;
+  width: 280px;
+  height: 380px;
+  z-index: 2;
+  margin: 0 auto;
+}
+
+/* Tap Instruction */
+.cake-bottom-text {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  bottom: -40px;
+  width: 100%;
+}
+.tap-instruction {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.8rem;
+  color: #ff4d85;
+  margin: 0;
+  opacity: 0;
+  animation: fadeUp 0.8s ease-out forwards;
+}
+
+/* SVG Cake Shadow Adjust for Light Theme */
+#cake-svg-anim {
+  display: block;
+  position: absolute;
+  top: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 500px;
+  filter: drop-shadow(0 15px 30px rgba(255, 182, 193, 0.4));
+}
+
+/* Candle Body */
+.velas {
+  background: #ffffff;
+  border-radius: 10px;
+  position: absolute;
+  top: 228px;
+  left: 50%;
+  margin-left: -2.5px;
+  width: 5px;
+  height: 35px;
+  transform: translateY(-350px);
+  backface-visibility: hidden;
+  animation: candleDrop 600ms 6s ease-out forwards;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(255, 182, 193, 0.4);
+  transition: opacity 0.8s ease;
+}
+.velas:after,
+.velas:before {
+  background: rgba(255, 60, 110, 0.6);
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2.2px;
+}
+.velas:after { top: 25%; left: 0; }
+.velas:before { top: 45%; left: 0; }
+
+/* Flames */
+.fuego {
+  border-radius: 100%;
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  margin-left: -3.5px;
+  width: 7px;
+  height: 19px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+/* Normal flickering */
+.stage-0 .fuego:nth-child(1), .stage-1 .fuego:nth-child(1) { animation: fuego 2s 6.5s infinite, fireFadeIn 0.3s 6.5s forwards; }
+.stage-0 .fuego:nth-child(2), .stage-1 .fuego:nth-child(2) { animation: fuego 1.5s 6.5s infinite, fireFadeIn 0.3s 6.5s forwards; }
+.stage-0 .fuego:nth-child(3), .stage-1 .fuego:nth-child(3) { animation: fuego 1s 6.5s infinite, fireFadeIn 0.3s 6.5s forwards; }
+.stage-0 .fuego:nth-child(4), .stage-1 .fuego:nth-child(4) { animation: fuego 0.5s 6.5s infinite, fireFadeIn 0.3s 6.5s forwards; }
+.stage-0 .fuego:nth-child(5), .stage-1 .fuego:nth-child(5) { animation: fuego 0.2s 6.5s infinite, fireFadeIn 0.3s 6.5s forwards; }
+
+/* Tapped state: brighter flame */
+.stage-2 .fuego:nth-child(1) { animation: fuegoBright 2s infinite; opacity: 1; }
+.stage-2 .fuego:nth-child(2) { animation: fuegoBright 1.5s infinite; opacity: 1; }
+.stage-2 .fuego:nth-child(3) { animation: fuegoBright 1s infinite; opacity: 1; }
+.stage-2 .fuego:nth-child(4) { animation: fuegoBright 0.5s infinite; opacity: 1; }
+.stage-2 .fuego:nth-child(5) { animation: fuegoBright 0.2s infinite; opacity: 1; }
+
+/* Extinguished state */
+.stage-3 .fuego {
+  opacity: 0 !important;
+  transform: translateY(-10px) scale(0) !important;
+  animation: none !important;
+}
+
+/* Smoke Particles on Extinguish */
+.smoke-container {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 15;
+}
+.smoke-p {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: 0;
+}
+.sp-1 { animation: smokeRise 2s ease-out forwards; }
+.sp-2 { animation: smokeRise 2.5s ease-out 0.2s forwards; left: -10px; }
+.sp-3 { animation: smokeRise 2.2s ease-out 0.4s forwards; left: 10px; }
+
+/* Burst Particles for Tap Interaction */
+.burst-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 20;
+}
+.burst-p {
+  position: absolute;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+}
+.bp-1 { color: #ff4d85; font-size: 24px; animation: cakeBurst 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: -100px; --by: -120px; }
+.bp-2 { color: #ffd700; font-size: 28px; animation: cakeBurst 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: 110px; --by: -90px; }
+.bp-3 { color: #ff4d85; font-size: 20px; animation: cakeBurst 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: -80px; --by: 100px; }
+.bp-4 { color: #ffd700; font-size: 26px; animation: cakeBurst 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: 90px; --by: 110px; }
+.bp-5 { color: #ff7eb3; font-size: 32px; animation: cakeBurst 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: 0px; --by: -140px; }
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeScaleIn {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes pulseBgGlow {
+  0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+}
+@keyframes fireFadeIn { to { opacity: 1; } }
+@keyframes candleDrop { to { transform: translateY(0); } }
+
+@keyframes fuego {
+  0%, 100% {
+    background: rgba(255, 235, 120, 0.9);
+    box-shadow: 0 0 20px 6px rgba(255, 170, 50, 0.4), 0 0 5px 2px rgba(255, 255, 200, 0.8);
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    background: rgba(255, 80, 20, 0.7);
+    box-shadow: 0 0 30px 10px rgba(255, 120, 0, 0.3), 0 0 8px 4px rgba(255, 200, 50, 0.7);
+    transform: translateY(-2px) scale(0.9);
+  }
+}
+
+@keyframes fuegoBright {
+  0%, 100% {
+    background: #fff;
+    box-shadow: 0 0 30px 10px rgba(255, 105, 180, 0.8), 0 0 10px 4px rgba(255, 255, 255, 0.9);
+    transform: translateY(-4px) scale(1.2);
+  }
+  50% {
+    background: rgba(255, 200, 220, 0.9);
+    box-shadow: 0 0 40px 15px rgba(255, 77, 133, 0.6), 0 0 12px 6px rgba(255, 255, 255, 0.8);
+    transform: translateY(-6px) scale(1.1);
+  }
+}
+
+@keyframes smokeRise {
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  100% { transform: translateY(-80px) scale(3); opacity: 0; }
+}
+
+@keyframes cakeBurst {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(1.5); opacity: 0; }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .cake-title { font-size: 2.6rem; }
+  .wish-made { font-size: 3rem; }
+  .cake-stage-container { transform: scale(0.85); margin-top: 20px; }
+  .cake-top-text { top: -100px; }
+  .cake-bottom-text { bottom: -20px; }
+}

@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Gift, Music, Lock, Cake } from 'lucide-react';
-import { supabase, type Surprise, verifyPassword } from '../lib/supabase';
+import { ArrowLeft, Gift, Music, Cake, ChevronLeft } from 'lucide-react';
+import { supabase, type Surprise } from '../lib/supabase';
+import { getSurpriseLocally } from '../lib/storage';
 import { getTheme } from '../lib/effects';
 import { stopBirthdayMusic } from '../lib/audio';
 import BirthdayVerify from './recipient/BirthdayVerify';
+import HeartIntro from './recipient/HeartIntro';
 import Countdown from './recipient/Countdown';
 import Celebration from './recipient/Celebration';
+import AnimatedBirthdayGiftPage from './recipient/AnimatedBirthdayGiftPage';
+import BirthdayFilm from './recipient/BirthdayFilm';
+import CakeAnimationPage from './recipient/CakeAnimationPage';
+import BalloonReasonsPage from './recipient/BalloonReasonsPage';
 import LetterPage from './recipient/LetterPage';
 import MemoriesPage from './recipient/MemoriesPage';
 import VideoPage from './recipient/VideoPage';
@@ -14,9 +20,23 @@ import PageNav, { type NavPage } from './recipient/PageNav';
 
 interface Props {
   slug: string;
+  previewMode?: string;
+  onBackFromPreview?: () => void;
 }
 
-type Phase = 'loading' | 'not-found' | 'password' | 'verify' | 'countdown' | 'celebration' | 'pages' | 'finale';
+type Phase =
+  | 'loading'
+  | 'not-found'
+  | 'heart'
+  | 'verify'
+  | 'countdown'
+  | 'celebration'
+  | 'birthday-film'
+  | 'cake-animation'
+  | 'balloon-reasons'
+  | 'birthday-gift'
+  | 'pages'
+  | 'finale';
 
 const PAGES: NavPage[] = [
   { id: 'letter', label: 'Letter' },
@@ -24,7 +44,7 @@ const PAGES: NavPage[] = [
   { id: 'video', label: 'Video' },
 ];
 
-export default function SurpriseView({ slug }: Props) {
+export default function SurpriseView({ slug, previewMode, onBackFromPreview }: Props) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [surprise, setSurprise] = useState<Surprise | null>(null);
   const [error, setError] = useState('');
@@ -33,143 +53,434 @@ export default function SurpriseView({ slug }: Props) {
 
   useEffect(() => {
     let alive = true;
-    supabase.from('surprises').select('*').eq('slug', slug).maybeSingle().then(({ data, error }) => {
-      if (!alive) return;
-      if (error) { setError(error.message); setPhase('not-found'); return; }
-      if (!data) { setPhase('not-found'); return; }
-      setSurprise(data as Surprise);
-      setPhase((data as Surprise).password_hash ? 'password' : 'verify');
-    });
-    return () => { alive = false; };
+
+    const fetchSurprise = async () => {
+      let localSurprise: Surprise | null = null;
+      try {
+        localSurprise = await getSurpriseLocally(slug);
+        if (!localSurprise) {
+          localSurprise = await getSurpriseLocally(`surprise_${slug}`);
+        }
+      } catch (e) {
+        console.warn('Could not read cached surprise:', e);
+      }
+
+      const applyPhase = (s: Surprise) => {
+        if (previewMode) {
+          if (previewMode === 'letter') { setPageIndex(0); setPhase('pages'); }
+          else if (previewMode === 'memories') { setPageIndex(1); setPhase('pages'); }
+          else if (previewMode === 'video') { setPageIndex(2); setPhase('pages'); }
+          else setPhase(previewMode as Phase);
+        } else {
+          setPhase('heart');
+        }
+      };
+
+      try {
+        let { data, error } = await supabase
+          .from('surprises')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (!data) {
+          const { data: byId } = await supabase
+            .from('surprises')
+            .select('*')
+            .eq('id', slug)
+            .maybeSingle();
+          if (byId) data = byId;
+        }
+
+        if (!alive) return;
+
+        if (data) {
+          saveSurpriseLocally(slug, data);
+          setSurprise(data as Surprise);
+          applyPhase(data as Surprise);
+          return;
+        }
+
+        if (localSurprise) {
+          setSurprise(localSurprise);
+          applyPhase(localSurprise);
+          return;
+        }
+
+        if (error) {
+          console.warn('Supabase fetch notice:', error.message);
+          setError(error.message);
+          setPhase('not-found');
+          return;
+        }
+
+        setPhase('not-found');
+      } catch (err: unknown) {
+        if (!alive) return;
+        if (localSurprise) {
+          setSurprise(localSurprise);
+          applyPhase(localSurprise);
+        } else {
+          const message = err instanceof Error ? err.message : 'Failed to load surprise';
+          setError(message);
+          setPhase('not-found');
+        }
+      }
+    };
+
+    fetchSurprise();
+
+    return () => {
+      alive = false;
+    };
   }, [slug]);
 
   // Stop music when leaving the experience entirely.
   useEffect(() => () => stopBirthdayMusic(), []);
 
-  const theme = useMemo(() => surprise ? getTheme(surprise.theme) : getTheme('pink'), [surprise]);
+  const theme = useMemo(
+    () => (surprise ? getTheme(surprise.theme) : getTheme('pink')),
+    [surprise]
+  );
 
   const goPage = (delta: number) => {
+    if (previewMode) return;
     setTransitioning(true);
+
     setTimeout(() => {
       setPageIndex((i) => {
         const next = i + delta;
-        if (next >= PAGES.length) { setPhase('finale'); return i; }
-        if (next < 0) return i;
+
+        if (next >= PAGES.length) {
+          setPhase('finale');
+          return i;
+        }
+
+        if (next < 0) {
+          setPhase('balloon-reasons');
+          return 0;
+        }
+
         return next;
       });
+
       setTransitioning(false);
     }, 300);
   };
 
-  // ── Loading ─────────────────────────────────────────────────────────────
-  if (phase === 'loading') {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#07050F', color: '#fff', fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ textAlign: 'center' }}>
-          <div className="animate-cake" style={{ marginBottom: 16 }}><Cake size={48} color="#FF4DA6" /></div>
-          <p style={{ color: 'rgba(255,255,255,0.6)' }}>Loading your surprise...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Not found ───────────────────────────────────────────────────────────
-  if (phase === 'not-found' || !surprise) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#07050F', color: '#fff', fontFamily: "'Inter', sans-serif", textAlign: 'center', padding: 24 }}>
-        <Gift size={48} color="#FF4DA6" />
-        <h2 style={{ marginTop: 16 }}>Surprise not found</h2>
-        <p style={{ color: 'rgba(255,255,255,0.6)' }}>{error || "This link doesn't lead to a surprise. Check the URL and try again."}</p>
-        <a href="/" className="btn-surprise" style={{ marginTop: 20, padding: '12px 24px', borderRadius: 9999, color: '#fff', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <Music size={16} /> Back to Home
-        </a>
-      </div>
-    );
-  }
-
-  // ── Password gate (optional) ────────────────────────────────────────────
-  if (phase === 'password') {
-    return <PasswordGate onVerify={async (pw: string) => {
-      const ok = await verifyPassword(pw, surprise.password_hash!);
-      if (ok) setPhase('verify');
-      return ok;
-    }} />;
-  }
-
-  // ── Birthday verification ───────────────────────────────────────────────
-  if (phase === 'verify') {
-    return <BirthdayVerify
-      recipientName={surprise.nickname || surprise.recipient_name}
-      birthdayDate={surprise.birthday_date}
-      theme={theme}
-      onVerified={() => setPhase('countdown')}
-    />;
-  }
-
-  // ── Countdown ───────────────────────────────────────────────────────────
-  if (phase === 'countdown') {
-    return <Countdown theme={theme} onComplete={() => setPhase('celebration')} />;
-  }
-
-  // ── Celebration ─────────────────────────────────────────────────────────
-  if (phase === 'celebration') {
-    return <Celebration theme={theme} onComplete={() => setPhase('pages')} />;
-  }
-
-  // ── Finale ──────────────────────────────────────────────────────────────
-  if (phase === 'finale') {
-    return <FinalePage s={surprise} theme={theme} onRestart={() => { stopBirthdayMusic(); setPhase('verify'); setPageIndex(0); }} />;
-  }
-
-  // ── Multi-page surprise ─────────────────────────────────────────────────
-  const isLast = pageIndex === PAGES.length - 1;
-  const pageProps = { s: surprise, theme, onNext: () => goPage(1), onPrev: () => goPage(-1), isLast };
-  const pageKey = `page-${pageIndex}`;
-
-  return (
-    <div style={{ background: theme.bg, color: '#fff', fontFamily: "'Inter', sans-serif", minHeight: '100vh', position: 'relative' }}>
-      <div key={pageKey} className={transitioning ? 'animate-page-out' : 'animate-page-in'} style={{ paddingBottom: 90 }}>
-        {pageIndex === 0 && <LetterPage {...pageProps} onNext={() => goPage(1)} />}
-        {pageIndex === 1 && <MemoriesPage {...pageProps} onPrev={() => goPage(-1)} onNext={() => goPage(1)} />}
-        {pageIndex === 2 && <VideoPage {...pageProps} onPrev={() => goPage(-1)} onNext={() => goPage(1)} />}
-      </div>
-
-      <PageNav
-        pages={PAGES}
-        current={pageIndex}
-        onPrev={() => goPage(-1)}
-        onNext={() => goPage(1)}
-        isLast={isLast}
-        accent={theme.accent}
-      />
-    </div>
-  );
-}
-
-// ── Password gate (kept inline, unchanged behavior) ─────────────────────────
-function PasswordGate({ onVerify }: { onVerify: (pw: string) => Promise<boolean> }) {
-  const [pw, setPw] = useState('');
-  const [err, setErr] = useState('');
-  const [checking, setChecking] = useState(false);
-  const submit = async () => {
-    setChecking(true); setErr('');
-    const ok = await onVerify(pw);
-    if (!ok) setErr('Incorrect password. Try again.');
-    setChecking(false);
+  const handleNextPhase = (next: Phase) => {
+    if (previewMode) return;
+    setPhase(next);
   };
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at 50% 40%, rgba(123,63,228,0.25), transparent 60%), #07050F', padding: 24, fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ width: 64, height: 64, borderRadius: 16, background: 'linear-gradient(135deg, #FF1F8C, #C026D3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-        <Lock size={28} color="#fff" />
+
+  const renderPhase = () => {
+    // ── Loading ─────────────────────────────────────────────────────────────
+    if (phase === 'loading') {
+      return (
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#07050F',
+            color: '#fff',
+            fontFamily: "'Inter', sans-serif",
+          }}
+        >
+          <div style={{ textAlign: 'center' }}>
+            <div className="animate-cake" style={{ marginBottom: 16 }}>
+              <Cake size={48} color="#FF4DA6" />
+            </div>
+
+            <p style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Loading your surprise...
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Not found ───────────────────────────────────────────────────────────
+    if (phase === 'not-found' || !surprise) {
+      return (
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#07050F',
+            color: '#fff',
+            fontFamily: "'Inter', sans-serif",
+            textAlign: 'center',
+            padding: 24,
+          }}
+        >
+          <Gift size={48} color="#FF4DA6" />
+
+          <h2 style={{ marginTop: 16 }}>
+            Surprise not found
+          </h2>
+
+          <p style={{ color: 'rgba(255,255,255,0.6)' }}>
+            {error ||
+              "This link doesn't lead to a surprise. Check the URL and try again."}
+          </p>
+
+          <a
+            href="/"
+            className="btn-surprise"
+            style={{
+              marginTop: 20,
+              padding: '12px 24px',
+              borderRadius: 9999,
+              color: '#fff',
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <Music size={16} />
+            Back to Home
+          </a>
+        </div>
+      );
+    }
+
+    // ── Heart Intro ─────────────────────────────────────────────────────────
+    if (phase === 'heart') {
+      return (
+        <HeartIntro
+          onContinue={() => handleNextPhase('verify')}
+        />
+      );
+    }
+
+    // ── Birthday verification ───────────────────────────────────────────────
+    if (phase === 'verify') {
+      return (
+        <BirthdayVerify
+          recipientName={surprise.nickname || surprise.recipient_name}
+          birthdayDate={surprise.birthday_date}
+          theme={theme}
+          verificationPhotoUrl={surprise.verification_photo_url || (surprise as any).verificationPhoto || (surprise as any).verification_photo || null}
+          onVerified={() => handleNextPhase('countdown')}
+        />
+      );
+    }
+
+    // ── Countdown ───────────────────────────────────────────────────────────
+    if (phase === 'countdown') {
+      return (
+        <Countdown
+          theme={theme}
+          onComplete={() => handleNextPhase('birthday-film')}
+        />
+      );
+    }
+
+    // ── Cinematic Birthday Film ──────────────────────────────────────────────
+    if (phase === 'birthday-film') {
+      return (
+        <BirthdayFilm
+          recipientName={surprise.nickname || surprise.recipient_name || 'Cutie'}
+          onComplete={() => handleNextPhase('cake-animation')}
+        />
+      );
+    }
+
+    // ── Animated Birthday Cake Page ─────────────────────────────────────────
+    if (phase === 'cake-animation') {
+      return (
+        <CakeAnimationPage
+          recipientName={surprise.nickname || surprise.recipient_name || 'Cutie'}
+          theme={theme}
+          onComplete={() => handleNextPhase('balloon-reasons')}
+        />
+      );
+    }
+
+    // ── 5 Balloons Reasons Page ─────────────────────────────────────────────
+    if (phase === 'balloon-reasons') {
+      return (
+        <BalloonReasonsPage
+          surprise={surprise}
+          recipientName={surprise.nickname || surprise.recipient_name || 'Cutie'}
+          onComplete={() => {
+            if (previewMode) return;
+            setPageIndex(0);
+            setPhase('pages');
+          }}
+        />
+      );
+    }
+
+    // ── Birthday Gift Animated Surprise Page (Not currently in flow, left for compat) ──
+    if (phase === 'birthday-gift') {
+      const hasMore = (surprise.memories && surprise.memories.length > 0) || Boolean(surprise.video_url || surprise.video_file_url);
+      return (
+        <AnimatedBirthdayGiftPage
+          s={surprise}
+          theme={theme}
+          hasNextPage={hasMore}
+          onNext={() => {
+            if (previewMode) return;
+            setPageIndex(surprise.memories && surprise.memories.length > 0 ? 1 : 2);
+            setPhase('pages');
+          }}
+        />
+      );
+    }
+
+    // ── Finale ───────────────────────────────────────────────────────────────
+    if (phase === 'finale') {
+      return (
+        <FinalePage
+          s={surprise}
+          theme={theme}
+          onRestart={() => {
+            if (previewMode) return;
+            stopBirthdayMusic();
+            setPhase('verify');
+            setPageIndex(0);
+          }}
+        />
+      );
+    }
+
+    // ── Multi-page surprise ─────────────────────────────────────────────────
+    const isLast = pageIndex === PAGES.length - 1;
+
+    const pageProps = {
+      s: surprise,
+      theme,
+      onNext: () => { if (!previewMode) goPage(1); },
+      onPrev: () => { if (!previewMode) goPage(-1); },
+      isLast,
+    };
+
+    const pageKey = `page-${pageIndex}`;
+
+    return (
+      <div
+        style={{
+          background: theme.bg,
+          color: '#fff',
+          fontFamily: "'Inter', sans-serif",
+          minHeight: '100vh',
+          position: 'relative',
+        }}
+      >
+        <div
+          key={pageKey}
+          className={
+            transitioning
+              ? 'animate-page-out'
+              : 'animate-page-in'
+          }
+          style={{ paddingBottom: 90 }}
+        >
+          {pageIndex === 0 && (
+            <LetterPage
+              {...pageProps}
+              onNext={() => { if (!previewMode) goPage(1); }}
+            />
+          )}
+
+          {pageIndex === 1 && (
+            <MemoriesPage
+              {...pageProps}
+              onPrev={() => { if (!previewMode) goPage(-1); }}
+              onNext={() => { if (!previewMode) goPage(1); }}
+            />
+          )}
+
+          {pageIndex === 2 && (
+            <VideoPage
+              {...pageProps}
+              onPrev={() => { if (!previewMode) goPage(-1); }}
+              onNext={() => { if (!previewMode) goPage(1); }}
+            />
+          )}
+        </div>
+
+        <PageNav
+          pages={PAGES}
+          current={pageIndex}
+          onPrev={() => { if (!previewMode) goPage(-1); }}
+          onNext={() => { if (!previewMode) goPage(1); }}
+          isLast={isLast}
+          accent={theme.accent}
+        />
       </div>
-      <h2 style={{ color: '#fff', margin: '0 0 6px', fontSize: 22, fontWeight: 700 }}>This surprise is locked</h2>
-      <p style={{ color: 'rgba(255,255,255,0.6)', margin: '0 0 24px', fontSize: 14 }}>Enter the password the creator shared with you.</p>
-      <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} placeholder="Password"
-        style={{ width: 280, padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(139,92,246,0.3)', color: '#fff', fontSize: 14, outline: 'none', textAlign: 'center' }} />
-      {err && <p style={{ color: '#FF4DA6', fontSize: 13, marginTop: 10 }}>{err}</p>}
-      <button onClick={submit} disabled={checking || !pw} className="btn-surprise" style={{ marginTop: 16, padding: '12px 28px', borderRadius: 9999, color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', cursor: pw ? 'pointer' : 'not-allowed', opacity: pw ? 1 : 0.5 }}>
-        {checking ? 'Checking...' : 'Unlock'}
-      </button>
-    </div>
+    );
+  };
+
+  const getPreviousPhaseHandler = () => {
+    if (previewMode) return null;
+    if (phase === 'birthday-film') return () => setPhase('countdown');
+    if (phase === 'cake-animation') return () => setPhase('birthday-film');
+    if (phase === 'balloon-reasons') return () => setPhase('cake-animation');
+    return null;
+  };
+
+  const handleGlobalPrev = getPreviousPhaseHandler();
+
+  return (
+    <>
+      {previewMode && onBackFromPreview && (
+        <button
+          onClick={onBackFromPreview}
+          style={{
+            position: 'fixed',
+            top: 20,
+            left: 20,
+            zIndex: 999999,
+            padding: '10px 16px',
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            color: '#fff',
+            borderRadius: 12,
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.8)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.65)'; }}
+        >
+          <ArrowLeft size={16} /> Back to Generated Surprise
+        </button>
+      )}
+      {!previewMode && handleGlobalPrev && (
+        <button
+          onClick={handleGlobalPrev}
+          style={{
+            position: 'fixed',
+            top: 20,
+            left: 20,
+            zIndex: 999999,
+            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 9999,
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)',
+            fontWeight: 600, fontSize: 14, cursor: 'pointer',
+            transition: 'opacity 0.2s, background 0.2s',
+            backdropFilter: 'blur(8px)',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+        >
+          <ChevronLeft size={16} /> Previous
+        </button>
+      )}
+      {renderPhase()}
+    </>
   );
 }

@@ -1,0 +1,255 @@
+/* =========================================================
+   HEART INTRO - WARM CREAM & PEACH THEME
+   ========================================================= */
+
+.hi-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  background: #fffaf8;
+  background-image: radial-gradient(ellipse at 50% 30%, #fffcfb 0%, #fff0ee 40%, #ffe1df 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 99999;
+  font-family: 'Inter', sans-serif;
+  color: #333;
+}
+
+/* ---------------------------------------------------------
+   Background Glows & Particles
+   --------------------------------------------------------- */
+.hi-bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  pointer-events: none;
+}
+.hi-glow-1 {
+  top: 15%; left: 10%;
+  width: 450px; height: 450px;
+  background: radial-gradient(circle, rgba(255, 192, 203, 0.35), transparent 70%);
+}
+.hi-glow-2 {
+  bottom: 5%; right: 5%;
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(255, 218, 185, 0.35), transparent 70%);
+}
+
+.hi-particle {
+  position: absolute;
+  pointer-events: none;
+}
+.hi-p-1 { top: 20%; left: 18%; animation: hi-float 6s infinite; color: rgba(255, 182, 193, 0.6); font-size: 24px; }
+.hi-p-2 { top: 65%; right: 15%; animation: hi-float 5s infinite 1s; color: rgba(255, 182, 193, 0.5); font-size: 18px; }
+.hi-p-3 { top: 35%; right: 22%; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 10px rgba(255,182,193,0.8); animation: hi-float 4s infinite 2s; }
+.hi-p-4 { bottom: 25%; left: 20%; width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 10px rgba(255,182,193,0.8); animation: hi-float 7s infinite 0.5s; }
+
+@keyframes hi-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+/* ---------------------------------------------------------
+   Content
+   --------------------------------------------------------- */
+.hi-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s ease;
+}
+
+/* ---------------------------------------------------------
+   Typography
+   --------------------------------------------------------- */
+.hi-top-text {
+  font-family: 'Dancing Script', cursive;
+  font-size: 2.2rem;
+  color: #cc5b7a;
+  margin: 0 0 40px;
+  font-weight: 500;
+  opacity: 0;
+  animation: hi-fade-down 1s ease-out 0.2s forwards;
+  text-shadow: 0 2px 10px rgba(255, 105, 180, 0.1);
+}
+
+.hi-bottom-text {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.hi-msg-1 {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.6rem;
+  color: #d9738e;
+  margin: 0 0 16px;
+  font-weight: 500;
+  line-height: 1.3;
+  opacity: 0;
+  animation: hi-fade-up 1s ease-out 0.8s forwards;
+}
+
+.hi-msg-2 {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  color: #ff4d85;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 600;
+  margin: 0;
+  opacity: 0;
+  animation: hi-fade-in 1s ease-out 1.4s forwards;
+}
+
+@keyframes hi-fade-down {
+  from { opacity: 0; transform: translateY(-15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hi-fade-up {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hi-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------------------------------------------------------
+   Heart Button
+   --------------------------------------------------------- */
+.hi-heart-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  display: block;
+  opacity: 0;
+  animation: hi-scale-in 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s forwards;
+}
+
+.hi-heart-wrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hi-heart-glow {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(255, 0, 0, 0.4) 0%, rgba(255, 0, 0, 0.1) 50%, transparent 70%);
+  filter: blur(15px);
+  animation: hi-pulse-glow 2s ease-in-out infinite alternate;
+}
+
+.hi-heart-shape {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  fill: #FF0000;
+  filter: drop-shadow(0 10px 15px rgba(255, 0, 0, 0.3));
+  animation: hi-heartbeat 1.8s ease-in-out infinite;
+  z-index: 2;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: center;
+}
+.hi-heart-btn:hover .hi-heart-shape {
+  transform: scale(1.05);
+}
+.hi-heart-btn:active .hi-heart-shape {
+  transform: scale(0.95);
+}
+
+@keyframes hi-scale-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes hi-pulse-glow {
+  from { transform: scale(0.9); opacity: 0.6; }
+  to { transform: scale(1.3); opacity: 1; }
+}
+
+@keyframes hi-heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.08); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.04); }
+  60% { transform: scale(1); }
+}
+
+/* ---------------------------------------------------------
+   Clicked State Transitions
+   --------------------------------------------------------- */
+.hi-clicked .hi-top-text,
+.hi-clicked .hi-bottom-text {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.hi-clicked .hi-heart-btn {
+  pointer-events: none;
+}
+
+.hi-clicked .hi-heart-shape {
+  animation: hi-unlock-heart 1.2s cubic-bezier(0.5, 0, 0.2, 1) forwards;
+}
+
+.hi-clicked .hi-container {
+  animation: hi-screen-flash 1.5s ease forwards;
+}
+
+@keyframes hi-unlock-heart {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.3); }
+  100% { transform: scale(60); opacity: 0; }
+}
+
+@keyframes hi-screen-flash {
+  0% { filter: brightness(1) blur(0); }
+  60% { filter: brightness(1.1) blur(2px); }
+  100% { filter: brightness(1.3) blur(10px); opacity: 0; }
+}
+
+/* ---------------------------------------------------------
+   Burst Particles
+   --------------------------------------------------------- */
+.hi-burst-particle {
+  position: absolute;
+  top: 50%; left: 50%;
+  z-index: 20;
+  opacity: 0;
+}
+.hi-bp-1 { color: #ff0000; font-size: 24px; animation: hi-burst 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: -80px; --by: -100px; }
+.hi-bp-2 { color: #ff4d85; font-size: 32px; animation: hi-burst 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: 90px; --by: -80px; }
+.hi-bp-3 { color: #ff0000; font-size: 20px; animation: hi-burst 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: -60px; --by: 80px; }
+.hi-bp-4 { color: #ff4d85; font-size: 28px; animation: hi-burst 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: 80px; --by: 90px; }
+.hi-bp-5 { color: #fff; font-size: 16px; animation: hi-burst 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: 0px; --by: -120px; }
+.hi-bp-6 { color: #fff; font-size: 18px; animation: hi-burst 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; --bx: -110px; --by: 10px; }
+
+@keyframes hi-burst {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(1.5); opacity: 0; }
+}
+
+/* ---------------------------------------------------------
+   Responsive Design
+   --------------------------------------------------------- */
+@media (max-width: 600px) {
+  .hi-top-text { font-size: 2rem; margin-bottom: 30px; }
+  .hi-heart-wrapper { width: 140px; height: 140px; }
+  .hi-heart-shape { width: 90px; height: 90px; }
+  .hi-msg-1 { font-size: 1.4rem; }
+  .hi-msg-2 { font-size: 0.8rem; }
+}
