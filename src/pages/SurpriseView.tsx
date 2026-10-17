@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Gift, Music, Cake, ChevronLeft } from 'lucide-react';
 import { supabase, type Surprise } from '../lib/supabase';
-import { getSurpriseLocally } from '../lib/storage';
+import { getSurpriseLocally, saveSurpriseLocally } from '../lib/storage';
 import { getTheme } from '../lib/effects';
 import { stopBirthdayMusic } from '../lib/audio';
 import BirthdayVerify from './recipient/BirthdayVerify';
 import HeartIntro from './recipient/HeartIntro';
 import Countdown from './recipient/Countdown';
-import Celebration from './recipient/Celebration';
 import AnimatedBirthdayGiftPage from './recipient/AnimatedBirthdayGiftPage';
 import BirthdayFilm from './recipient/BirthdayFilm';
 import CakeAnimationPage from './recipient/CakeAnimationPage';
@@ -65,7 +64,7 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
         console.warn('Could not read cached surprise:', e);
       }
 
-      const applyPhase = (s: Surprise) => {
+      const applyPhase = () => {
         if (previewMode) {
           if (previewMode === 'letter') { setPageIndex(0); setPhase('pages'); }
           else if (previewMode === 'memories') { setPageIndex(1); setPhase('pages'); }
@@ -77,11 +76,13 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
       };
 
       try {
-        let { data, error } = await supabase
+        const { data: initialData, error: fetchError } = await supabase
           .from('surprises')
           .select('*')
           .eq('slug', slug)
           .maybeSingle();
+
+        let data = initialData;
 
         if (!data) {
           const { data: byId } = await supabase
@@ -97,19 +98,19 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
         if (data) {
           saveSurpriseLocally(slug, data);
           setSurprise(data as Surprise);
-          applyPhase(data as Surprise);
+          applyPhase();
           return;
         }
 
         if (localSurprise) {
           setSurprise(localSurprise);
-          applyPhase(localSurprise);
+          applyPhase();
           return;
         }
 
-        if (error) {
-          console.warn('Supabase fetch notice:', error.message);
-          setError(error.message);
+        if (fetchError) {
+          console.warn('Supabase fetch notice:', fetchError.message);
+          setError(fetchError.message);
           setPhase('not-found');
           return;
         }
@@ -119,7 +120,7 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
         if (!alive) return;
         if (localSurprise) {
           setSurprise(localSurprise);
-          applyPhase(localSurprise);
+          applyPhase();
         } else {
           const message = err instanceof Error ? err.message : 'Failed to load surprise';
           setError(message);
@@ -133,7 +134,7 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
     return () => {
       alive = false;
     };
-  }, [slug]);
+  }, [slug, previewMode]);
 
   // Stop music when leaving the experience entirely.
   useEffect(() => () => stopBirthdayMusic(), []);
@@ -262,12 +263,18 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
 
     // ── Birthday verification ───────────────────────────────────────────────
     if (phase === 'verify') {
+      const extra = surprise as unknown as Record<string, unknown>;
       return (
         <BirthdayVerify
           recipientName={surprise.nickname || surprise.recipient_name}
           birthdayDate={surprise.birthday_date}
           theme={theme}
-          verificationPhotoUrl={surprise.verification_photo_url || (surprise as any).verificationPhoto || (surprise as any).verification_photo || null}
+          verificationPhotoUrl={
+            surprise.verification_photo_url ||
+            (extra?.verificationPhoto as string) ||
+            (extra?.verification_photo as string) ||
+            null
+          }
           onVerified={() => handleNextPhase('countdown')}
         />
       );
