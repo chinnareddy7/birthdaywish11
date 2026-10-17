@@ -1346,6 +1346,13 @@ export default function GenerateSurprise({ onBack }: Props) {
         const { data: insertedData, error } = await supabase.from('surprises').insert(surprisePayload).select().maybeSingle();
         if (error) {
           console.warn('Supabase insert note:', error);
+          if (error.message?.includes('balloon_') || error.code === '42703') {
+            const { balloon_personal_message, ...corePayload } = surprisePayload as Record<string, unknown>;
+            const retry = await supabase.from('surprises').insert(corePayload).select().maybeSingle();
+            if (retry.data) {
+              await saveSurpriseLocally(`surprise_${slug}`, { ...retry.data, balloon_personal_message });
+            }
+          }
         } else if (insertedData) {
           await saveSurpriseLocally(`surprise_${slug}`, insertedData);
         }

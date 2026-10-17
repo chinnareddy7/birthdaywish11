@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Gift, Music, Cake, ChevronLeft } from 'lucide-react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { ArrowLeft, Gift, Music, Cake, ChevronLeft, WifiOff, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase, type Surprise } from '../lib/supabase';
 import { getSurpriseLocally, saveSurpriseLocally } from '../lib/storage';
 import { getTheme } from '../lib/effects';
@@ -26,6 +26,7 @@ interface Props {
 type Phase =
   | 'loading'
   | 'not-found'
+  | 'error'
   | 'heart'
   | 'verify'
   | 'countdown'
@@ -37,6 +38,8 @@ type Phase =
   | 'pages'
   | 'finale';
 
+type ErrorType = 'network' | 'server' | 'not-found' | null;
+
 const PAGES: NavPage[] = [
   { id: 'letter', label: 'Letter' },
   { id: 'memories', label: 'Memories' },
@@ -47,8 +50,21 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
   const [phase, setPhase] = useState<Phase>('loading');
   const [surprise, setSurprise] = useState<Surprise | null>(null);
   const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState<ErrorType>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
+
+  const applyPhase = useCallback(() => {
+    if (previewMode) {
+      if (previewMode === 'letter') { setPageIndex(0); setPhase('pages'); }
+      else if (previewMode === 'memories') { setPageIndex(1); setPhase('pages'); }
+      else if (previewMode === 'video') { setPageIndex(2); setPhase('pages'); }
+      else setPhase(previewMode as Phase);
+    } else {
+      setPhase('heart');
+    }
+  }, [previewMode]);
 
   useEffect(() => {
     let alive = true;
@@ -63,17 +79,6 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
       } catch (e) {
         console.warn('Could not read cached surprise:', e);
       }
-
-      const applyPhase = () => {
-        if (previewMode) {
-          if (previewMode === 'letter') { setPageIndex(0); setPhase('pages'); }
-          else if (previewMode === 'memories') { setPageIndex(1); setPhase('pages'); }
-          else if (previewMode === 'video') { setPageIndex(2); setPhase('pages'); }
-          else setPhase(previewMode as Phase);
-        } else {
-          setPhase('heart');
-        }
-      };
 
       try {
         const { data: initialData, error: fetchError } = await supabase
@@ -102,29 +107,66 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
           return;
         }
 
+        // If data is in local cache on this machine, load it and sync to cloud
         if (localSurprise) {
           setSurprise(localSurprise);
           applyPhase();
+          // Background sync to Supabase so other devices (e.g. mobile) can view it
+          Promise.resolve(supabase.from('surprises').upsert(localSurprise)).then((res) => {
+            if (res && !res.error) {
+              console.log('Successfully synced local surprise to cloud database');
+            } else if (res?.error) {
+              console.warn('Cloud sync note:', res.error.message);
+            }
+          }).catch(() => {});
           return;
         }
 
         if (fetchError) {
-          console.warn('Supabase fetch notice:', fetchError.message);
-          setError(fetchError.message);
-          setPhase('not-found');
+          console.warn('Supabase fetch error:', fetchError);
+          if (fetchError.code === 'PGRST116') {
+            setErrorType('not-found');
+            setError("This link doesn't lead to a surprise. Check the URL and try again.");
+            setPhase('not-found');
+          } else {
+            setErrorType('server');
+            setError(fetchError.message || 'Database service error');
+            setPhase('error');
+          }
           return;
         }
 
+        // 0 rows found without errors
+        setErrorType('not-found');
+        setError("This link doesn't lead to a surprise. Check the URL and try again.");
         setPhase('not-found');
       } catch (err: unknown) {
         if (!alive) return;
+
         if (localSurprise) {
           setSurprise(localSurprise);
           applyPhase();
+          return;
+        }
+
+        const rawMessage = err instanceof Error ? err.message : String(err || 'Failed to load surprise');
+        const isNetwork =
+          err instanceof TypeError ||
+          rawMessage.toLowerCase().includes('failed to fetch') ||
+          rawMessage.toLowerCase().includes('network') ||
+          rawMessage.toLowerCase().includes('load failed') ||
+          (typeof navigator !== 'undefined' && !navigator.onLine);
+
+        console.error('Fetch exception caught:', err);
+
+        if (isNetwork) {
+          setErrorType('network');
+          setError(rawMessage);
+          setPhase('error');
         } else {
-          const message = err instanceof Error ? err.message : 'Failed to load surprise';
-          setError(message);
-          setPhase('not-found');
+          setErrorType('server');
+          setError(rawMessage);
+          setPhase('error');
         }
       }
     };
@@ -134,7 +176,7 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
     return () => {
       alive = false;
     };
-  }, [slug, previewMode]);
+  }, [slug, previewMode, applyPhase, retryCount]);
 
   // Stop music when leaving the experience entirely.
   useEffect(() => () => stopBirthdayMusic(), []);
@@ -202,7 +244,119 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
       );
     }
 
-    // ── Not found ───────────────────────────────────────────────────────────
+    // ── Error: Network failure or Server Issue (Requirement 10) ──────────────
+    if (phase === 'error') {
+      const isNetwork = errorType === 'network';
+      return (
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#07050F',
+            color: '#fff',
+            fontFamily: "'Inter', sans-serif",
+            textAlign: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              background: 'rgba(255, 77, 166, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+              border: '1px solid rgba(255, 77, 166, 0.3)',
+            }}
+          >
+            {isNetwork ? <WifiOff size={36} color="#FF4DA6" /> : <AlertCircle size={36} color="#FF4DA6" />}
+          </div>
+
+          <h2 style={{ fontSize: 24, fontWeight: 700, margin: '8px 0', letterSpacing: '-0.5px' }}>
+            {isNetwork ? 'Connection Error' : 'Database Service Unavailable'}
+          </h2>
+
+          <p style={{ color: 'rgba(255,255,255,0.7)', maxWidth: 460, margin: '8px 0 16px', lineHeight: 1.6, fontSize: 15 }}>
+            {isNetwork
+              ? "We couldn't connect to the database to load this surprise. Please check your internet connection or try again."
+              : 'The database server returned an error while loading this surprise.'}
+          </p>
+
+          {error && (
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontSize: 12,
+                color: 'rgba(255, 255, 255, 0.5)',
+                fontFamily: 'monospace',
+                marginBottom: 24,
+                maxWidth: 420,
+                wordBreak: 'break-word',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={() => {
+                setPhase('loading');
+                setRetryCount((c) => c + 1);
+              }}
+              style={{
+                padding: '12px 28px',
+                borderRadius: 9999,
+                color: '#fff',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #FF4DA6, #FF6B8B)',
+                border: 'none',
+                boxShadow: '0 4px 16px rgba(255, 77, 166, 0.4)',
+                fontSize: 14,
+              }}
+            >
+              <RefreshCw size={16} />
+              Try Again
+            </button>
+
+            <a
+              href="/"
+              style={{
+                padding: '12px 24px',
+                borderRadius: 9999,
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontWeight: 600,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                fontSize: 14,
+              }}
+            >
+              <Music size={16} />
+              Back to Home
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Genuinely Not found (0 rows, valid connection) ───────────────────────
     if (phase === 'not-found' || !surprise) {
       return (
         <div
@@ -226,8 +380,7 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
           </h2>
 
           <p style={{ color: 'rgba(255,255,255,0.6)' }}>
-            {error ||
-              "This link doesn't lead to a surprise. Check the URL and try again."}
+            This link doesn't lead to a surprise. Check the URL and try again.
           </p>
 
           <a
