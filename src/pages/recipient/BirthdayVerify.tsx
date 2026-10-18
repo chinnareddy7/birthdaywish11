@@ -26,6 +26,30 @@ interface ParsedPhoto {
   objectFit: 'cover' | 'contain';
 }
 
+export function getShapeClipStyles(shape: string): CSSProperties {
+  switch (shape) {
+    case 'circle':
+      return { borderRadius: '50%', overflow: 'hidden' };
+    case 'oval':
+      return { borderRadius: '50%', overflow: 'hidden' };
+    case 'rounded-rectangle':
+      return { borderRadius: '24px', overflow: 'hidden' };
+    case 'triangle':
+      return { clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' };
+    case 'hexagon':
+      return { clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' };
+    case 'star':
+      return { clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' };
+    case 'heart':
+      return { clipPath: 'url(#verify-heart-clip)' };
+    case 'square':
+      return { aspectRatio: '1 / 1', borderRadius: '20px', overflow: 'hidden' };
+    case 'rect':
+    default:
+      return { borderRadius: '22px', overflow: 'hidden' };
+  }
+}
+
 function parseVerificationPhoto(raw: unknown): ParsedPhoto {
   if (!raw) {
     return { url: null, shape: 'rect', isCustomShape: false, objectFit: 'cover' };
@@ -64,7 +88,7 @@ function parseVerificationPhoto(raw: unknown): ParsedPhoto {
     }
 
     const shape = obj.config?.shape || 'rect';
-    const isCustomShape = Boolean(shape && shape !== 'circle' && shape !== 'rect' && shape !== 'square');
+    const isCustomShape = Boolean(shape && shape !== 'rect' && shape !== 'square');
     const objectFit = (obj.config?.objectFit as 'cover' | 'contain') || (isCustomShape ? 'contain' : 'cover');
 
     return { url, shape, isCustomShape, objectFit };
@@ -95,25 +119,42 @@ export default function BirthdayVerify({
   const [imgSrc, setImgSrc] = useState<string | null>(parsedPhoto.url);
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setImgSrc(parsedPhoto.url);
     setImageError(false);
     setImageLoaded(false);
+
+    // Immediate and frame-delayed check for cached images or data URIs
+    const checkComplete = () => {
+      if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+        setImageLoaded(true);
+      }
+    };
+    checkComplete();
+    const t = setTimeout(checkComplete, 50);
+    return () => clearTimeout(t);
   }, [parsedPhoto.url]);
 
-  const handleImageError = () => {
+  const handleImageError = (e?: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.warn('[BirthdayVerify] Verification photo failed to load:', {
+      src: imgSrc,
+      errorEvent: e?.type,
+    });
     // If finalUrl failed, try fallback to originalUrl from JSON if available and persistent
     if (typeof verificationPhotoUrl === 'string') {
       try {
         const parsed = JSON.parse(verificationPhotoUrl);
         if (parsed.originalUrl && parsed.originalUrl !== imgSrc && !parsed.originalUrl.startsWith('blob:')) {
+          console.info('[BirthdayVerify] Falling back to originalUrl:', parsed.originalUrl);
           setImgSrc(parsed.originalUrl);
           return;
         }
       } catch {}
     }
     setImageError(true);
+    setImageLoaded(false);
   };
 
   // Dial pad dynamic dimension measurement
@@ -244,7 +285,7 @@ export default function BirthdayVerify({
     return passcode.slice(4, 8).padEnd(4, '_');
   };
 
-  const hasPhoto = Boolean(imgSrc && !imageError);
+  const hasValidPhoto = Boolean(imgSrc && !imageError);
 
   return (
     <div style={{
@@ -256,13 +297,23 @@ export default function BirthdayVerify({
       background: '#fffaf8',
       backgroundImage: `radial-gradient(ellipse at 50% 30%, #fffcfb 0%, #fff0ee 40%, #ffe1df 100%)`,
       textAlign: 'center', 
-      padding: '24px 16px', 
+      padding: '24px 16px 48px', 
       fontFamily: "'Inter', sans-serif", 
       position: 'relative', 
-      overflow: 'hidden',
+      overflowY: 'auto',
+      overflowX: 'hidden',
       color: '#333',
       boxSizing: 'border-box'
     }}>
+      {/* SVG Defs for ObjectBoundingBox-based Heart Clip */}
+      <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
+        <defs>
+          <clipPath id="verify-heart-clip" clipPathUnits="objectBoundingBox">
+            <path d="M 0.5, 0.88 C 0.2, 0.65, 0, 0.45, 0, 0.28 C 0, 0.12, 0.12, 0, 0.28, 0 C 0.38, 0, 0.46, 0.05, 0.5, 0.12 C 0.54, 0.05, 0.62, 0, 0.72, 0 C 0.88, 0, 1, 0.12, 1, 0.28 C 1, 0.45, 0.8, 0.65, 0.5, 0.88 Z" />
+          </clipPath>
+        </defs>
+      </svg>
+
       <style>{`
         @keyframes fadeScaleIn {
           from { opacity: 0; transform: scale(0.95) translateY(10px); }
@@ -311,8 +362,18 @@ export default function BirthdayVerify({
         .anim-stagger-6 { animation: fadeScaleIn 0.8s ease-out 1.1s forwards; opacity: 0; }
         
         .photo-wrapper {
-          animation: fadeScaleIn 0.8s ease-out 0.5s forwards, floatPhoto 6s ease-in-out infinite 1.3s;
+          animation: fadeScaleIn 0.8s ease-out 0.5s forwards;
           opacity: 0;
+        }
+
+        .verify-photo-card {
+          width: 250px;
+          height: 330px;
+          max-width: 100%;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .verify-keypad-grid {
@@ -379,7 +440,12 @@ export default function BirthdayVerify({
         @media (max-width: 719px) {
           .verify-body-container {
             flex-direction: column !important;
-            gap: 22px !important;
+            gap: 16px !important;
+          }
+          .verify-photo-card {
+            width: min(210px, 60vw) !important;
+            height: min(210px, 60vw) !important;
+            margin: 0 auto 4px !important;
           }
         }
 
@@ -472,7 +538,7 @@ export default function BirthdayVerify({
         position: 'relative', 
         zIndex: 2, 
         width: '100%', 
-        maxWidth: hasPhoto ? 820 : 440, 
+        maxWidth: 820, 
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center',
@@ -497,23 +563,22 @@ export default function BirthdayVerify({
         {/* Main interactive area: Photo + Keypad */}
         <div className="verify-body-container">
           
-          {/* Automatically measured and scaled Photo Card */}
-          {hasPhoto && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
+          {/* Automatically measured and scaled Photo Card / Fallback Heart Placeholder */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {hasValidPhoto ? (
               <div
-                className="photo-wrapper"
+                className="photo-wrapper verify-photo-card"
                 style={{
-                  width: dialPadDims.width,
-                  height: dialPadDims.height,
-                  maxWidth: '100%',
+                  width: dialPadDims.width || 250,
+                  height: dialPadDims.height || 330,
                   borderRadius: parsedPhoto.isCustomShape ? 0 : 24,
                   overflow: parsedPhoto.isCustomShape ? 'visible' : 'hidden',
                   border: parsedPhoto.isCustomShape ? 'none' : '2px solid rgba(255, 182, 193, 0.85)',
@@ -525,11 +590,13 @@ export default function BirthdayVerify({
                   justifyContent: 'center',
                   position: 'relative',
                   transition: 'width 0.25s ease, height 0.25s ease',
+                  ...(parsedPhoto.isCustomShape ? { filter: 'drop-shadow(0 8px 18px rgba(255, 182, 193, 0.55))' } : {}),
                 }}
               >
                 <img
+                  ref={imgRef}
                   src={imgSrc!}
-                  alt="Birthday surprise"
+                  alt="Birthday surprise verification"
                   onLoad={() => setImageLoaded(true)}
                   onError={handleImageError}
                   style={{
@@ -538,10 +605,9 @@ export default function BirthdayVerify({
                     objectFit: parsedPhoto.objectFit,
                     objectPosition: 'center',
                     display: 'block',
-                    borderRadius: parsedPhoto.isCustomShape ? 0 : 22,
                     opacity: imageLoaded ? 1 : 0,
                     transition: 'opacity 0.35s ease',
-                    ...(parsedPhoto.isCustomShape ? { filter: 'drop-shadow(0 8px 18px rgba(255, 182, 193, 0.55))' } : {})
+                    ...getShapeClipStyles(parsedPhoto.shape),
                   }}
                 />
 
@@ -554,7 +620,7 @@ export default function BirthdayVerify({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: 'rgba(255, 240, 245, 0.5)',
+                      background: 'rgba(255, 240, 245, 0.6)',
                       borderRadius: parsedPhoto.isCustomShape ? 0 : 22,
                     }}
                   >
@@ -562,8 +628,37 @@ export default function BirthdayVerify({
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            ) : (
+              /* Heart placeholder shown ONLY when photo is genuinely unavailable or failed to load */
+              <div
+                className="photo-wrapper verify-photo-card"
+                style={{
+                  width: dialPadDims.width || 250,
+                  height: dialPadDims.height || 330,
+                  borderRadius: 24,
+                  border: '2px solid rgba(255, 182, 193, 0.75)',
+                  boxShadow: '0 8px 30px rgba(255, 182, 193, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  backdropFilter: 'blur(12px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 24,
+                  boxSizing: 'border-box',
+                  transition: 'width 0.25s ease, height 0.25s ease',
+                }}
+              >
+                <span style={{ fontSize: 44, animation: 'floatHeart 3s infinite', filter: 'drop-shadow(0 4px 12px rgba(255,105,180,0.45))' }}>💗</span>
+                <span style={{ marginTop: 12, fontSize: 16, color: '#cc5b7a', fontWeight: 600, fontFamily: "'Dancing Script', cursive" }}>
+                  A Special Memory
+                </span>
+                <span style={{ marginTop: 4, fontSize: 11, color: 'rgba(204, 91, 122, 0.6)' }}>
+                  Awaits Behind The Lock
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Birthday keypad wrapper */}
           <div

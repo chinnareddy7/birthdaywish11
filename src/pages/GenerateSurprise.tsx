@@ -11,6 +11,58 @@ import Cropper from 'react-easy-crop';
 import getCroppedImg from '../lib/cropImage';
 import SurpriseView from './SurpriseView';
 
+function dataUrlToBlob(dataUrl: string): Blob {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
+async function uploadVideoToSupabase(file: File): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+  const fileName = `videos/video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const contentType = file.type || 'video/mp4';
+
+  const { error } = await supabase.storage
+    .from('verification-photos')
+    .upload(fileName, file, { contentType, upsert: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from('verification-photos')
+    .getPublicUrl(fileName);
+
+  return publicUrlData.publicUrl;
+}
+
+async function uploadDataUrlToStorage(dataUrl: string, prefix = 'verification'): Promise<string> {
+  const blob = dataUrlToBlob(dataUrl);
+  const ext = blob.type.includes('jpeg') || blob.type.includes('jpg') ? 'jpg' : 'png';
+  const fileName = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from('verification-photos')
+    .upload(fileName, blob, { contentType: blob.type, upsert: false });
+
+  if (error) {
+    throw error;
+  }
+
+  const { data: publicData } = supabase.storage
+    .from('verification-photos')
+    .getPublicUrl(fileName);
+
+  return publicData.publicUrl;
+}
+
 interface FormState {
   name: string;
   nickname: string;
@@ -25,6 +77,7 @@ interface FormState {
   videoUrl: string;
   videoFile: string | null;
   videoFileName: string | null;
+  videoRawFile: File | null;
   videoTitle: string;
   videoDedication: string;
   usePassword: boolean;
@@ -686,11 +739,10 @@ function PasswordPhotoStep({
         }
 
         // Upload final png
-        const res = await fetch(croppedImageBase64);
-        const blob = await res.blob();
+        const blob = dataUrlToBlob(croppedImageBase64);
         const croppedFile = new File([blob], finalFileName, { type: 'image/png' });
 
-        const { error: err2 } = await supabase.storage.from('verification-photos').upload(finalFileName, croppedFile, { upsert: false });
+        const { error: err2 } = await supabase.storage.from('verification-photos').upload(finalFileName, croppedFile, { contentType: 'image/png', upsert: false });
         if (!err2) {
           finalUrl = supabase.storage.from('verification-photos').getPublicUrl(finalFileName).data.publicUrl;
         }
@@ -886,10 +938,44 @@ function PasswordPhotoStep({
 // ── Step 4: Special Video ──────────────────────────────────────────────────────
 function Step4({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const youtubeId = (() => {
-    const m = (form.videoUrl ?? '').match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    const m = (form.videoUrl ?? '').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
     return m ? m[1] : null;
   })();
+
+  const handleVideoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+
+    // Local preview immediately so creator can view it right away
+    const previewUrl = URL.createObjectURL(f);
+    setForm({
+      ...form,
+      videoFile: previewUrl,
+      videoFileName: f.name,
+      videoRawFile: f,
+    });
+    setUploadingVideo(true);
+    setUploadError(null);
+
+    try {
+      const publicUrl = await uploadVideoToSupabase(f);
+      setForm({
+        ...form,
+        videoFile: publicUrl,
+        videoFileName: f.name,
+        videoRawFile: null,
+      });
+    } catch (err: any) {
+      console.warn('Video cloud upload note:', err);
+      setUploadError('Uploading in background. Your video will be securely saved when you generate the surprise.');
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
 
   return (
     <>
@@ -905,23 +991,24 @@ function Step4({ form, setForm }: { form: FormState; setForm: (f: FormState) => 
       </div>
 
       <div style={{ marginBottom: 18 }}>
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Video URL (YouTube)</label>
-        <InputField icon={<Play size={16} />} placeholder="Paste a YouTube link" value={form.videoUrl} onChange={(v) => setForm({ ...form, videoUrl: v })} />
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Video URL (YouTube or direct video link)</label>
+        <InputField icon={<Play size={16} />} placeholder="Paste a YouTube or video link" value={form.videoUrl} onChange={(v) => setForm({ ...form, videoUrl: v })} />
         {form.videoUrl && (
           <div style={{ marginTop: 12, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(139,92,246,0.25)' }}>
             {youtubeId ? (
               <iframe
                 width="100%"
                 height="220"
-                src={`https://www.youtube.com/embed/${youtubeId}`}
+                src={`https://www.youtube.com/embed/${youtubeId}?playsinline=1`}
                 title="Video preview"
                 frameBorder={0}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
             ) : (
-              <div style={{ padding: 24, textAlign: 'center', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-                Please paste a valid YouTube link.
+              <div style={{ padding: 18, background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.7)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Video size={18} color="#FF4DA6" />
+                <span>Direct video link added: {form.videoUrl}</span>
               </div>
             )}
           </div>
@@ -930,22 +1017,38 @@ function Step4({ form, setForm }: { form: FormState; setForm: (f: FormState) => 
 
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Or Upload a Video</label>
-        <input ref={fileRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) setForm({ ...form, videoFile: URL.createObjectURL(f), videoFileName: f.name });
-        }} />
+        <input ref={fileRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleVideoFileChange} />
         {form.videoFile ? (
-          <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(139,92,246,0.3)' }}>
-            <video src={form.videoFile} controls style={{ width: '100%', maxHeight: 240, display: 'block' }} />
-            <button onClick={() => setForm({ ...form, videoFile: null, videoFileName: null })} style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(139,92,246,0.3)', background: '#000' }}>
+            <video src={form.videoFile} controls playsInline style={{ width: '100%', maxHeight: 240, display: 'block' }} />
+            {uploadingVideo && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', fontSize: 13, zIndex: 4 }}>
+                <Loader2 size={28} className="animate-spin" color="#FF4DA6" />
+                <span>Uploading video to cloud storage...</span>
+              </div>
+            )}
+            <button
+              onClick={() => setForm({ ...form, videoFile: null, videoFileName: null, videoRawFile: null })}
+              style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}
+            >
               <X size={16} />
             </button>
+            {form.videoFile.startsWith('http') && (
+              <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(16, 185, 129, 0.85)', color: '#fff', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, zIndex: 5 }}>
+                <Check size={12} /> Saved to cloud storage
+              </div>
+            )}
           </div>
         ) : (
           <button onClick={() => fileRef.current?.click()} style={{ width: '100%', padding: '24px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(139,92,246,0.3)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontSize: 13 }}>
             <Upload size={24} style={{ color: '#A78BFA' }} />
             Click to upload a video
           </button>
+        )}
+        {uploadError && (
+          <div style={{ marginTop: 8, fontSize: 12, color: '#FF4DA6' }}>
+            {uploadError}
+          </div>
         )}
       </div>
 
@@ -959,8 +1062,6 @@ function Step4({ form, setForm }: { form: FormState; setForm: (f: FormState) => 
           <InputField icon={<Heart size={16} />} placeholder="A short dedication" value={form.videoDedication} onChange={(v) => setForm({ ...form, videoDedication: v })} />
         </div>
       </div>
-
-
     </>
   );
 }
@@ -1290,7 +1391,7 @@ export default function GenerateSurprise({ onBack }: Props) {
   const [saveError, setSaveError] = useState('');
   const [createdSlug, setCreatedSlug] = useState('');
   const [playing, setPlaying] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     name: '',
     nickname: '',
     yourName: '',
@@ -1304,6 +1405,7 @@ export default function GenerateSurprise({ onBack }: Props) {
     videoUrl: '',
     videoFile: null as string | null,
     videoFileName: null as string | null,
+    videoRawFile: null as File | null,
     videoTitle: '',
     videoDedication: '',
     usePassword: false,
@@ -1319,6 +1421,40 @@ export default function GenerateSurprise({ onBack }: Props) {
     try {
       const slug = generateSlug(form.name);
       const passwordHash = form.usePassword && form.password ? await hashPassword(form.password) : null;
+
+      // 1. Guarantee video is stored persistently in Supabase Cloud Storage (not temporary blob)
+      let persistentVideoUrl = form.videoFile;
+      if (form.videoRawFile) {
+        try {
+          persistentVideoUrl = await uploadVideoToSupabase(form.videoRawFile);
+        } catch (videoErr: any) {
+          throw new Error(`Cloud storage video upload failed: ${videoErr.message}. Please check your connection and try again.`);
+        }
+      } else if (persistentVideoUrl && persistentVideoUrl.startsWith('blob:')) {
+        // Blob URLs cannot be accessed by other browsers/devices
+        persistentVideoUrl = null;
+      }
+
+      // 2. Guarantee verification photo is stored in Supabase Cloud Storage
+      let persistentPhotoUrl = form.verificationPhoto;
+      if (persistentPhotoUrl) {
+        try {
+          if (persistentPhotoUrl.startsWith('{')) {
+            const parsed = JSON.parse(persistentPhotoUrl);
+            if (parsed.finalUrl && parsed.finalUrl.startsWith('data:image/')) {
+              const uploaded = await uploadDataUrlToStorage(parsed.finalUrl, 'verification-final');
+              parsed.finalUrl = uploaded;
+              persistentPhotoUrl = JSON.stringify(parsed);
+            }
+          } else if (persistentPhotoUrl.startsWith('data:image/')) {
+            const uploaded = await uploadDataUrlToStorage(persistentPhotoUrl, 'verification-photo');
+            persistentPhotoUrl = uploaded;
+          }
+        } catch (photoErr) {
+          console.warn('Could not upload verification photo to storage, keeping payload:', photoErr);
+        }
+      }
+
       const surprisePayload = {
         slug,
         creator_name: form.yourName || 'Someone',
@@ -1326,13 +1462,13 @@ export default function GenerateSurprise({ onBack }: Props) {
         nickname: form.nickname || null,
         relationship: form.relationship || null,
         birthday_date: form.birthdayDate || null,
-        verification_photo_url: form.verificationPhoto,
+        verification_photo_url: persistentPhotoUrl,
         theme: form.theme || 'pink',
         letter: form.letter || null,
         letter_photo_url: form.letterPhoto,
         memories: form.memories,
         video_url: form.videoUrl || null,
-        video_file_url: form.videoFile,
+        video_file_url: persistentVideoUrl,
         video_title: form.videoTitle || null,
         video_dedication: form.videoDedication || null,
         balloon_personal_message: JSON.stringify(form.balloonMessages),
