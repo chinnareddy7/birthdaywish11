@@ -1,0 +1,94 @@
+/* ==========================================================================
+   Consistent Global Previous Button
+   Positioned fixed at the bottom-left corner across surprise pages.
+   ========================================================================== */
+
+.btn-previous-global {
+  position: fixed;
+  bottom: 20px;
+  bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  left: 20px;
+  left: max(20px, env(safe-area-inset-left, 20px));
+  z-index: 9999;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  padding: 10px 20px;
+  min-height: 42px;
+  border-radius: 9999px;
+
+  /* Clearly visible soft pink / rose-colored background */
+  background: linear-gradient(135deg, #ff5c80 0%, #ee2a60 100%);
+  color: #ffffff;
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-decoration: none;
+
+  /* Elevated styling visible on both light and dark backgrounds */
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 4px 14px rgba(238, 42, 96, 0.35), 0 2px 6px rgba(0, 0, 0, 0.12);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(8px);
+
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              box-shadow 0.2s ease,
+              opacity 0.2s ease;
+}
+
+/* Hover state */
+.btn-previous-global:hover {
+  background: linear-gradient(135deg, #ff4770 0%, #d81b50 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(238, 42, 96, 0.45), 0 3px 8px rgba(0, 0, 0, 0.18);
+  color: #ffffff;
+}
+
+/* Focus state */
+.btn-previous-global:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(238, 42, 96, 0.5), 0 4px 14px rgba(238, 42, 96, 0.4);
+}
+
+/* Pressed / Active state */
+.btn-previous-global:active {
+  background: linear-gradient(135deg, #d81b50 0%, #bd1342 100%);
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 2px 8px rgba(238, 42, 96, 0.3), 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Left-arrow icon micro-animation */
+.btn-previous-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.btn-previous-global:hover .btn-previous-icon {
+  transform: translateX(-2px);
+}
+
+/* ── Mobile Layout (< 640px) ── */
+@media (max-width: 640px) {
+  .btn-previous-global {
+    bottom: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    left: 16px;
+    left: max(16px, env(safe-area-inset-left, 16px));
+    padding: 8px 16px;
+    min-height: 38px;
+    font-size: 13px;
+    gap: 5px;
+  }
+}

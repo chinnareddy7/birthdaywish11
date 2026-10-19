@@ -7,11 +7,11 @@ interface Props {
   s: Surprise;
   theme: Theme;
   onNext: () => void;
-  onPrev: () => void;
+  onPrev?: () => void;
   isLast: boolean;
 }
 
-export default function MemoriesPage({ s, theme, onNext, onPrev, isLast }: Props) {
+export default function MemoriesPage({ s, theme, onNext, isLast }: Props) {
   const memories: MemoryType[] = s.memories ?? [];
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [slideshow, setSlideshow] = useState(false);
@@ -351,10 +351,7 @@ export default function MemoriesPage({ s, theme, onNext, onPrev, isLast }: Props
               Every picture holds a beautiful memory ❤️
             </h3>
             
-            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={onPrev} className="mem-btn-secondary">
-                Back
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button onClick={onNext} className="mem-btn-primary">
                 {isLast ? 'Finish' : 'Continue'}
                 <ChevronRight size={20} />
@@ -370,7 +367,7 @@ export default function MemoriesPage({ s, theme, onNext, onPrev, isLast }: Props
           position: 'fixed', 
           inset: 0, 
           background: 'rgba(255, 245, 247, 0.95)', 
-          zIndex: 1000, 
+          zIndex: 20000, 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 

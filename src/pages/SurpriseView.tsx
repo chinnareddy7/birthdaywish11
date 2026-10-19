@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { ArrowLeft, Gift, Music, Cake, ChevronLeft, WifiOff, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Gift, Music, Cake, WifiOff, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase, type Surprise } from '../lib/supabase';
 import { getSurpriseLocally, saveSurpriseLocally } from '../lib/storage';
 import { getTheme } from '../lib/effects';
@@ -16,6 +16,7 @@ import MemoriesPage from './recipient/MemoriesPage';
 import VideoPage from './recipient/VideoPage';
 import FinalePage from './recipient/FinalePage';
 import PageNav, { type NavPage } from './recipient/PageNav';
+import PreviousButton from './recipient/PreviousButton';
 
 interface Props {
   slug: string;
@@ -187,7 +188,6 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
   );
 
   const goPage = (delta: number) => {
-    if (previewMode) return;
     setTransitioning(true);
 
     setTimeout(() => {
@@ -212,7 +212,6 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
   };
 
   const handleNextPhase = (next: Phase) => {
-    if (previewMode) return;
     setPhase(next);
   };
 
@@ -518,8 +517,8 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
     const pageProps = {
       s: surprise,
       theme,
-      onNext: () => { if (!previewMode) goPage(1); },
-      onPrev: () => { if (!previewMode) goPage(-1); },
+      onNext: () => goPage(1),
+      onPrev: () => goPage(-1),
       isLast,
     };
 
@@ -542,28 +541,28 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
               ? 'animate-page-out'
               : 'animate-page-in'
           }
-          style={{ paddingBottom: 90 }}
+          style={{ paddingBottom: 100 }}
         >
           {pageIndex === 0 && (
             <LetterPage
               {...pageProps}
-              onNext={() => { if (!previewMode) goPage(1); }}
+              onNext={() => goPage(1)}
             />
           )}
 
           {pageIndex === 1 && (
             <MemoriesPage
               {...pageProps}
-              onPrev={() => { if (!previewMode) goPage(-1); }}
-              onNext={() => { if (!previewMode) goPage(1); }}
+              onPrev={() => goPage(-1)}
+              onNext={() => goPage(1)}
             />
           )}
 
           {pageIndex === 2 && (
             <VideoPage
               {...pageProps}
-              onPrev={() => { if (!previewMode) goPage(-1); }}
-              onNext={() => { if (!previewMode) goPage(1); }}
+              onPrev={() => goPage(-1)}
+              onNext={() => goPage(1)}
             />
           )}
         </div>
@@ -571,8 +570,8 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
         <PageNav
           pages={PAGES}
           current={pageIndex}
-          onPrev={() => { if (!previewMode) goPage(-1); }}
-          onNext={() => { if (!previewMode) goPage(1); }}
+          onPrev={() => goPage(-1)}
+          onNext={() => goPage(1)}
           isLast={isLast}
           accent={theme.accent}
         />
@@ -581,10 +580,17 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
   };
 
   const getPreviousPhaseHandler = () => {
-    if (previewMode) return null;
     if (phase === 'birthday-film') return () => setPhase('countdown');
     if (phase === 'cake-animation') return () => setPhase('birthday-film');
     if (phase === 'balloon-reasons') return () => setPhase('cake-animation');
+    if (phase === 'pages') {
+      if (pageIndex === 0) {
+        return () => {
+          setPhase('balloon-reasons');
+        };
+      }
+      return () => goPage(-1);
+    }
     return null;
   };
 
@@ -620,25 +626,8 @@ export default function SurpriseView({ slug, previewMode, onBackFromPreview }: P
           <ArrowLeft size={16} /> Back to Generated Surprise
         </button>
       )}
-      {!previewMode && handleGlobalPrev && (
-        <button
-          onClick={handleGlobalPrev}
-          style={{
-            position: 'fixed',
-            top: 20,
-            left: 20,
-            zIndex: 999999,
-            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 9999,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)',
-            fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            transition: 'opacity 0.2s, background 0.2s',
-            backdropFilter: 'blur(8px)',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-        >
-          <ChevronLeft size={16} /> Previous
-        </button>
+      {handleGlobalPrev && (
+        <PreviousButton onClick={handleGlobalPrev} />
       )}
       {renderPhase()}
     </>

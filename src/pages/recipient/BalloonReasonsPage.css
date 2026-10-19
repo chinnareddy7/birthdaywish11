@@ -12,7 +12,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 40px 20px 80px;
+  padding: 40px 20px max(110px, env(safe-area-inset-bottom, 110px));
   box-sizing: border-box;
   font-family: 'Inter', sans-serif;
   color: #333;

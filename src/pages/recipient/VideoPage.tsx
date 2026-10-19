@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, ChevronLeft, ChevronRight, Heart, Music, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, ChevronRight, Heart, Music, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import type { Surprise } from '../../lib/supabase';
 import { type Theme, LightHearts } from '../../lib/effects';
 
@@ -7,11 +7,11 @@ interface Props {
   s: Surprise;
   theme: Theme;
   onNext: () => void;
-  onPrev: () => void;
+  onPrev?: () => void;
   isLast: boolean;
 }
 
-export default function VideoPage({ s, theme, onNext, onPrev, isLast }: Props) {
+export default function VideoPage({ s, theme, onNext, isLast }: Props) {
   const accent = theme.accent;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
@@ -206,8 +206,7 @@ export default function VideoPage({ s, theme, onNext, onPrev, isLast }: Props) {
         <LightHearts accent={accent} count={6} />
         <Music size={48} color={accent} />
         <h2 style={{ marginTop: 16, fontFamily: "'Dancing Script', cursive", fontSize: '2rem' }}>No video uploaded</h2>
-        <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
-          <button onClick={onPrev} style={navBtnStyle}>Previous</button>
+        <div style={{ display: 'flex', gap: 12, marginTop: 32, justifyContent: 'center' }}>
           <button onClick={onNext} className="btn-surprise" style={{ ...navBtnStyle, background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, border: 'none' }}>{isLast ? 'Finish' : 'Next'}</button>
         </div>
       </div>
@@ -492,9 +491,6 @@ export default function VideoPage({ s, theme, onNext, onPrev, isLast }: Props) {
 
       {/* Nav */}
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 36, position: 'relative', zIndex: 2 }}>
-        <button onClick={onPrev} style={navBtnStyle}>
-          <ChevronLeft size={16} style={{ display: 'inline', verticalAlign: 'middle' }} /> Previous
-        </button>
         <button
           onClick={onNext}
           className="btn-surprise"

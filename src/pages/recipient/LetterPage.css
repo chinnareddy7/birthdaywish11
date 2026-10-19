@@ -31,6 +31,7 @@
   /* When opened, allow scrolling and shift alignment to top */
   justify-content: flex-start;
   padding-top: 40px;
+  padding-bottom: max(110px, env(safe-area-inset-bottom, 110px));
 }
 
 .letter-page-root:not(.is-opened) {
